@@ -1,0 +1,117 @@
+@model ProvMeet.Models.Coordinator
+@{
+    ViewData["Title"] = "Add Coordinator";
+}
+
+<style>
+    /* ========================================== */
+    /* MASTER OPACITY & COLOR CONTROL             */
+    :root {
+        --card-opacity: 1.0; 
+    }
+    /* ========================================== */
+
+    body {
+        background-color: var(--cc-background) !important; 
+    }
+
+    .form-card {
+        background: white;
+        border-radius: var(--cc-radius-lg, 14px);
+        box-shadow: 0 10px 30px rgba(18, 63, 45, 0.08);
+        border: 1px solid rgba(18, 63, 45, 0.15);
+        border-top: 5px solid var(--cc-gold, #C8A354);
+    }
+    
+    .form-control-custom {
+        border: 1px solid var(--cc-border, #D9DEE5);
+        border-radius: 6px;
+        padding: 0.75rem 1rem;
+        font-family: var(--font-body, 'Inter', sans-serif);
+    }
+
+    .form-control-custom:focus {
+        border-color: var(--cc-primary, #123F2D);
+        box-shadow: 0 0 0 0.2rem rgba(18, 63, 45, 0.15);
+    }
+
+    .btn-submit-custom {
+        background: linear-gradient(135deg, var(--cc-primary, #123F2D) 0%, var(--cc-secondary, #397447) 100%);
+        border: none;
+        color: white;
+        font-weight: 700;
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(18, 63, 45, 0.2);
+        font-family: var(--font-body, 'Inter', sans-serif);
+    }
+
+    .btn-submit-custom:hover {
+        opacity: 0.95;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(57, 116, 71, 0.3);
+        color: white;
+    }
+
+    .btn-cancel-custom {
+        border: 1px solid var(--cc-border, #D9DEE5);
+        color: var(--cc-primary, #123F2D);
+        background: #ffffff;
+        font-weight: 700;
+        padding: 0.75rem 1.25rem;
+        border-radius: 6px;
+        transition: all 0.25s ease;
+        font-family: var(--font-body, 'Inter', sans-serif);
+    }
+
+    .btn-cancel-custom:hover {
+        background: rgba(18, 63, 45, 0.04);
+        color: var(--cc-primary, #123F2D);
+        border-color: var(--cc-primary, #123F2D);
+    }
+</style>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="form-card p-4 p-md-5">
+                <h3 class="fw-bold mb-4" style="font-family: var(--font-body); color: var(--cc-primary, #123F2D);">
+                    <i class="bi bi-person-plus-fill text-warning me-2"></i>ADD COORDINATOR
+                </h3>
+
+                <form asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Full Name</label>
+                        <input asp-for="FullName" class="form-control form-control-custom" placeholder="e.g., Juan D. Dela Cruz" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Username</label>
+                        <input asp-for="Username" class="form-control form-control-custom" placeholder="e.g., jdelacruz" required />
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Account Password</label>
+                        <input asp-for="Password" type="text" class="form-control form-control-custom" value="coordinator" readonly />
+                        <small class="text-muted mt-1 d-block" style="font-family: var(--font-body);">
+                            <i class="bi bi-info-circle me-1"></i> New users are assigned the default password "coordinator" and will be required to change it upon first login.
+                        </small>
+                    </div>
+
+                    <div class="mb-4 p-3 bg-light rounded border d-flex align-items-center gap-3">
+                        <input asp-for="IsAdmin" class="form-check-input ms-0" type="checkbox" id="isAdminSwitch" style="transform: scale(1.2);">
+                        <label class="form-check-label fw-bold text-dark" for="isAdminSwitch" style="font-size: 0.9rem; font-family: var(--font-body);">Grant Global Administrator Access</label>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-submit-custom flex-grow-1"><span>Save Account</span></button>
+                        <a asp-action="Index" class="btn btn-cancel-custom px-4">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

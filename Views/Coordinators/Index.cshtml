@@ -1,0 +1,208 @@
+@model IEnumerable<ProvMeet.Models.Coordinator>
+@{
+    ViewData["Title"] = "Coordinator Directory";
+}
+
+<style>
+    /* ========================================== */
+    /* MASTER OPACITY & COLOR CONTROL             */
+    :root {
+        --card-opacity: 1.0; 
+    }
+    /* ========================================== */
+
+    body {
+        background-color: var(--cc-background) !important; 
+    }
+
+    /* Animated Gradient Core Setup */
+    @@keyframes gradientMove {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    .page-header {
+        color: var(--cc-primary, #123F2D);
+        border-bottom: 3px solid var(--cc-gold, #C8A354);
+        padding-bottom: 1rem;
+        margin-bottom: 2rem;
+    }
+    .page-header h1 {
+        color: var(--cc-primary, #123F2D);
+    }
+
+    .table-card {
+        background: white;
+        border-radius: var(--cc-radius-lg, 14px);
+        box-shadow: 0 10px 30px rgba(18, 63, 45, 0.08);
+        border: 1px solid rgba(18, 63, 45, 0.15);
+        overflow: hidden;
+    }
+
+    /* Table Headers matching Card Animated Gradient Design */
+    .minimalist-table th {
+        font-family: var(--font-body, 'Inter', sans-serif);
+        background: linear-gradient(-45deg, 
+            rgba(18, 63, 45, var(--card-opacity)) 0%, 
+            rgba(9, 45, 32, var(--card-opacity)) 65%, 
+            rgba(57, 116, 71, var(--card-opacity)) 90%, 
+            rgba(18, 63, 45, var(--card-opacity)) 100%);
+        background-size: 300% 300%;
+        animation: gradientMove 12s ease-in-out infinite;
+        color: #ffffff;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        padding: 14px 16px;
+        letter-spacing: 0.5px;
+        border: none;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+    }
+
+    .minimalist-table tbody td {
+        padding: 1rem 16px;
+        vertical-align: middle;
+        border-bottom: 1px solid #dee2e6;
+        font-family: var(--font-body, 'Inter', sans-serif);
+    }
+
+    /* Strict Desktop View Alternating Rows with Theme Tint */
+    @@media (min-width: 769px) {
+        .minimalist-table tbody tr {
+            background-color: #ffffff;
+        }
+        .minimalist-table tbody tr:nth-child(even) {
+            background-color: rgba(57, 116, 71, 0.03);
+        }
+        .minimalist-table tbody tr:hover {
+            background-color: rgba(18, 63, 45, 0.06) !important;
+        }
+    }
+
+    .btn-add-custom {
+        background: linear-gradient(135deg, var(--cc-primary, #123F2D) 0%, var(--cc-secondary, #397447) 100%);
+        border: none;
+        color: white;
+        font-weight: 700;
+        padding: 0.5rem 1.25rem;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(18, 63, 45, 0.2);
+        font-family: var(--font-body, 'Inter', sans-serif);
+        font-size: 0.85rem;
+    }
+
+    .btn-add-custom:hover {
+        opacity: 0.95;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(57, 116, 71, 0.3);
+        color: white;
+    }
+
+    /* Mobile Responsive Card View */
+    @@media (max-width: 768px) {
+        .minimalist-table thead { display: none; }
+        .minimalist-table tbody tr { 
+            display: flex; flex-direction: column;
+            margin-bottom: 1.25rem; padding: 1.25rem; 
+            background: linear-gradient(-45deg, 
+                rgba(18, 63, 45, var(--card-opacity)) 0%, 
+                rgba(9, 45, 32, var(--card-opacity)) 65%, 
+                rgba(57, 116, 71, var(--card-opacity)) 90%, 
+                rgba(18, 63, 45, var(--card-opacity)) 100%) !important; 
+            background-size: 300% 300%;
+            animation: gradientMove 12s ease-in-out infinite;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-left: 5px solid var(--cc-gold, #C8A354) !important; 
+            border-radius: var(--cc-radius-lg, 14px);
+            box-shadow: 0 8px 24px rgba(18, 63, 45, 0.2);
+            color: #ffffff;
+            gap: 0.5rem;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .minimalist-table tbody td { display: flex; justify-content: space-between; align-items: center; padding: 0.25rem 0 !important; border: none !important; }
+        .minimalist-table tbody td::before { content: attr(data-label); font-weight: bold; color: rgba(255,255,255,0.8); text-transform: uppercase; font-size: 0.75rem; }
+        .minimalist-table tbody td:last-child {
+            margin-top: 0.5rem;
+            padding-top: 0.75rem !important;
+            border-top: 1px dashed rgba(255,255,255,0.3) !important;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .minimalist-table tbody td:last-child::before { display: none; }
+        .minimalist-table .coordinator-name { color: #ffffff !important; gap: 12px; }
+        .minimalist-table .coordinator-name span { min-width: 0; text-align: right; overflow-wrap: anywhere; }
+        .coordinator-action .action-label { display: none; }
+        .minimalist-table .coordinator-action { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0 !important; border-radius: 12px !important; font-size: 20px; border-width: 1px; }
+        .minimalist-table .coordinator-edit { background: #f5e3a1; color: #123f2d; border-color: #f5e3a1; }
+        .minimalist-table .coordinator-delete { background: #fff1f0; color: #a61b16; border-color: #ffc9c5; }
+        .minimalist-table .coordinator-action:focus-visible { outline: 3px solid white; outline-offset: 3px; }
+        
+        .page-header h1 {
+            font-size: 1.15rem !important;
+            white-space: nowrap;
+        }
+    }
+</style>
+
+<div class="container py-4 py-md-5">
+    
+    <div class="page-header d-flex justify-content-between align-items-end flex-wrap gap-2">
+        <div>
+            <h1 class="display-6 fw-bold mb-1" style="font-family: var(--font-body);">
+                <i class="bi bi-people-fill text-warning"></i> COORDINATOR DIRECTORY
+            </h1>
+            <p class="fs-6 text-muted mb-0 fw-bold" style="font-family: var(--font-body);">Manage system access credentials</p>
+        </div>
+        <a asp-action="Create" class="btn btn-add-custom">
+            <span><i class="bi bi-plus-lg"></i> Add New</span>
+        </a>
+    </div>
+
+    <div class="table-card p-0">
+        <div class="table-responsive">
+            <table class="minimalist-table w-100 mb-0">
+                <thead>
+                    <tr>
+                        <th>Full Name</th>
+                        <th>Username</th>
+                        <th>Access Level</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any()) {
+                        <tr>
+                            <td colspan="4" class="text-center py-4 text-muted">No coordinators registered yet.</td>
+                        </tr>
+                    }
+                    else {
+                        @foreach (var item in Model) {
+                            <tr>
+                                <td data-label="Full Name" class="fw-bold coordinator-name" style="color: var(--cc-primary, #123F2D);"><span>@item.FullName</span></td>
+                                <td data-label="Username"><code class="text-dark bg-light px-2 py-1 rounded">@item.Username</code></td>
+                                <td data-label="Access Level">
+                                    @if (item.IsAdmin) { 
+                                        <span class="badge bg-danger rounded-pill px-3">Administrator</span> 
+                                    } else { 
+                                        <span class="badge bg-secondary rounded-pill px-3">Manager</span> 
+                                    }
+                                </td>
+                                <td class="text-end" data-label="Action">
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary fw-bold rounded-pill px-3 coordinator-action coordinator-edit" aria-label="Edit @item.FullName" title="Edit"><i class="bi bi-pencil-square" aria-hidden="true"></i><span class="action-label ms-1">Edit</span></a>
+                                    
+                                    <form asp-action="Delete" asp-route-id="@item.Id" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete user @item.Username?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger fw-bold rounded-pill px-3 coordinator-action coordinator-delete" aria-label="Delete @item.FullName" title="Delete"><i class="bi bi-trash-fill" aria-hidden="true"></i><span class="action-label ms-1">Delete</span></button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

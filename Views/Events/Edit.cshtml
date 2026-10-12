@@ -1,0 +1,165 @@
+@model ProvMeet.Models.Event
+@{
+    ViewData["Title"] = "Edit Event";
+}
+
+<style>
+    /* ========================================== */
+    /* MASTER OPACITY & COLOR CONTROL             */
+    :root {
+        --card-opacity: 1.0; 
+    }
+    /* ========================================== */
+
+    body {
+        background-color: var(--cc-background) !important; 
+    }
+
+    .form-card {
+        background: white;
+        border-radius: var(--cc-radius-lg, 14px);
+        box-shadow: 0 10px 30px rgba(18, 63, 45, 0.08);
+        border: 1px solid rgba(18, 63, 45, 0.15);
+        border-top: 5px solid var(--cc-gold, #C8A354);
+    }
+    
+    .form-control-custom {
+        border: 1px solid var(--cc-border, #D9DEE5);
+        border-radius: 6px;
+        padding: 0.75rem 1rem;
+        font-family: var(--font-body, 'Inter', sans-serif);
+    }
+    
+    .form-control-custom:focus {
+        border-color: var(--cc-primary, #123F2D);
+        box-shadow: 0 0 0 0.2rem rgba(18, 63, 45, 0.15);
+    }
+    
+    label {
+        font-family: var(--font-body, 'Inter', sans-serif);
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 700;
+    }
+
+    .btn-custom-primary {
+        background: linear-gradient(135deg, var(--cc-primary, #123F2D) 0%, var(--cc-secondary, #397447) 100%);
+        border: none;
+        color: white;
+        font-weight: 700;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(18, 63, 45, 0.2);
+        font-family: var(--font-body, 'Inter', sans-serif);
+    }
+
+    .btn-custom-primary:hover {
+        opacity: 0.95;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(57, 116, 71, 0.3);
+        color: white;
+    }
+
+    .btn-cancel-custom {
+        border: 1px solid var(--cc-border, #D9DEE5);
+        color: var(--cc-primary, #123F2D);
+        background: #ffffff;
+        font-weight: 700;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        transition: all 0.25s ease;
+        font-family: var(--font-body, 'Inter', sans-serif);
+    }
+
+    .btn-cancel-custom:hover {
+        background: rgba(18, 63, 45, 0.04);
+        color: var(--cc-primary, #123F2D);
+        border-color: var(--cc-primary, #123F2D);
+    }
+</style>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-12">
+            
+            <div class="mb-4">
+                <a asp-action="ManageEvents" class="text-decoration-none text-muted fw-bold" style="font-size: 0.85rem; font-family: var(--font-body);"><i class="bi bi-arrow-left"></i> Back to Management</a>
+            </div>
+
+            <div class="form-card p-4 p-md-5">
+                <h2 class="mb-4 fw-bold" style="font-family: var(--font-body); color: var(--cc-primary, #123F2D);">
+                    <i class="bi bi-pencil-square text-warning me-2"></i>MODIFY EVENT
+                </h2>
+                
+                <form asp-action="Edit" method="post">
+                    <input type="hidden" asp-for="Id" />
+                    
+                    <div class="row g-4">
+                        <div class="col-12">
+                            <label asp-for="Title" class="form-label">Event Title</label>
+                            <input asp-for="Title" class="form-control form-control-custom" required />
+                        </div>
+
+                        <!-- Coordinator Selection -->
+                        <div class="col-12">
+                            <label asp-for="CoordinatorId" class="form-label">Assigned Coordinator</label>
+                            <select asp-for="CoordinatorId" asp-items="ViewBag.Coordinators" class="form-select form-control-custom">
+                                <option value="">-- No Coordinator Assigned --</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="SportName" class="form-label">Sport Name</label>
+                            <input asp-for="SportName" class="form-control form-control-custom" placeholder="e.g. Athletics, Basketball" required />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="SportCategory" class="form-label">TYPE</label>
+                            <select asp-for="SportCategory" class="form-select form-control-custom" required>
+                                <option value="Individual">Individual</option>
+                                <option value="Team">Team</option>
+                                <option value="Demonstration">Demonstration</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="EventCategory" class="form-label">CATEGORY</label>
+                            <select asp-for="EventCategory" class="form-select form-control-custom" required>
+                                <option value="">-- Select Category --</option>
+                                <option value="Boys">Boys</option>
+                                <option value="Girls">Girls</option>
+                                <option value="Mixed">Mixed</option>
+                            </select>
+                            <span asp-validation-for="EventCategory" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Division" class="form-label">Division / Level</label>
+                            <select asp-for="Division" class="form-select form-control-custom" required>
+                                <option value="Elementary">Elementary</option>
+                                <option value="Secondary">Secondary</option>
+                                <option value="Paragames">Paragames</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Status" class="form-label">Status</label>
+                            <select asp-for="Status" class="form-select form-control-custom">
+                                <option value="Pending">Pending</option>
+                                <option value="Completed">Completed</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-3 justify-content-end mt-5 pt-3" style="border-top: 1px solid #dee2e6;">
+                        <a asp-action="ManageEvents" class="btn btn-cancel-custom">Cancel</a>
+                        <button type="submit" class="btn btn-custom-primary"><span>Save Changes</span></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

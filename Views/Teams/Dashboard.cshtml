@@ -1,0 +1,273 @@
+@model IEnumerable<ProvMeet.Models.Team>
+@{
+    ViewData["Title"] = "Participating Teams";
+
+    var standings = ViewBag.DashboardStandings as List<ProvMeet.Models.MedalTally> ?? new();
+    (int Gold, int Silver, int Bronze) Medals(int teamId, string division) {
+        var rows = standings.Where(t => t.TeamId == teamId &&
+            (division == "Overall" ? t.Division == "Elementary" || t.Division == "Secondary" : t.Division == division));
+        return (rows.Sum(t => t.Gold), rows.Sum(t => t.Silver), rows.Sum(t => t.Bronze));
+    }
+    int Rank((int Gold, int Silver, int Bronze) medals, IEnumerable<(int Gold, int Silver, int Bronze)> peers) =>
+        1 + peers.Count(p => p.Gold > medals.Gold || (p.Gold == medals.Gold && p.Silver > medals.Silver) || (p.Gold == medals.Gold && p.Silver == medals.Silver && p.Bronze > medals.Bronze));
+
+}
+
+<style>
+    /* ========================================== */
+    /* MASTER OPACITY & COLOR CONTROL             */
+    :root {
+        --card-opacity: 1.0; 
+    }
+    /* ========================================== */
+
+    body {
+        background-color: var(--cc-background) !important; 
+    }
+
+    /* Animated Gradient Core Setup */
+    @@keyframes gradientMove {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    .school-card {
+        background: linear-gradient(-45deg, 
+            rgba(18, 63, 45, var(--card-opacity)) 0%, 
+            rgba(9, 45, 32, var(--card-opacity)) 65%, 
+            rgba(57, 116, 71, var(--card-opacity)) 90%, 
+            rgba(18, 63, 45, var(--card-opacity)) 100%);
+        background-size: 300% 300%;
+        animation: gradientMove 12s ease-in-out infinite;
+        border-radius: var(--cc-radius-lg, 14px);
+        box-shadow: 0 8px 24px rgba(18, 63, 45, 0.15);
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 2rem 1.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        position: relative;
+        overflow: hidden;
+        z-index: 1;
+        min-height: 175px;
+        color: #ffffff;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+    }
+
+    .school-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 50%;
+        height: 100%;
+        background: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0) 100%);
+        transform: skewX(-25deg);
+        transition: all 0.6s ease;
+        z-index: -1;
+    }
+
+    .school-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 14px 28px rgba(57, 116, 71, 0.25);
+        border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .school-card:hover::before {
+        left: 125%;
+    }
+
+    .card-left-content {
+        flex: 1;
+        padding-right: 1.5rem;
+        z-index: 2;
+    }
+
+    .area-card-logo { width: 112px; height: 112px; object-fit: contain; flex-shrink: 0; filter: drop-shadow(0 5px 8px rgba(0,0,0,.3)); }
+    .team-acronym { color: #fff; font-size: clamp(1.35rem, 2vw, 1.8rem); line-height: 1; font-weight: 900; letter-spacing: .08em; margin: .25rem 0 .55rem; }
+    .team-division { color: var(--cc-gold-light, #F5E3A1); font-size: .85rem; letter-spacing: .08em; }
+
+    @@media (min-width: 992px) {
+        #schoolsContainer .team-item { flex: 0 0 33.333333%; max-width: 33.333333%; }
+    }
+
+    @@media (max-width: 991.98px) {
+        #schoolsContainer { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; margin-left: auto; margin-right: auto; max-width: 440px; }
+        #schoolsContainer .team-item { width: 100%; max-width: none; padding: 0; margin: 0; }
+        .school-card { min-height: 140px; padding: 1rem 1.25rem; justify-content: space-between; gap: 1rem; }
+        .area-card-logo { width: clamp(80px, 24vw, 112px); height: clamp(80px, 24vw, 112px); }
+        .card-left-content { flex: 1; min-width: 0; padding-right: 0; }
+        .team-acronym { font-size: clamp(1.4rem, 6vw, 1.9rem); letter-spacing: .025em; margin-bottom: .5rem; }
+        .team-division { font-size: clamp(.8rem, 3.4vw, 1rem); letter-spacing: .03em; overflow-wrap: anywhere; }
+    }
+    
+    /* Division Filter Tabs matching application design system */
+    .division-filters {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        margin-bottom: 2.5rem;
+        flex-wrap: nowrap; /* Keep buttons on one line */
+        overflow-x: auto; /* Enable horizontal scrolling if needed */
+        scrollbar-width: none; /* Hide scrollbar Firefox */
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    }
+
+    .division-filters::-webkit-scrollbar {
+        display: none; /* Hide scrollbar Chrome/Safari */
+    }
+
+    .filter-btn {
+        background: linear-gradient(135deg, rgba(241, 245, 249, 0.9) 0%, rgba(226, 232, 240, 0.9) 100%);
+        border: 1px solid rgba(18, 63, 45, 0.15); 
+        color: var(--cc-primary, #123F2D);
+        font-family: var(--font-body, 'Inter', sans-serif);
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 8px 22px;
+        border-radius: 50px;
+        transition: var(--cc-transition, all 0.25s ease);
+        font-size: 0.85rem;
+        white-space: nowrap; /* Prevent text from wrapping to a second line */
+        box-shadow: 0 2px 6px rgba(18, 63, 45, 0.04);
+        backdrop-filter: blur(4px);
+    }
+
+    .filter-btn:hover {
+        background: linear-gradient(135deg, rgba(226, 232, 240, 1) 0%, rgba(203, 213, 225, 1) 100%);
+        color: var(--cc-primary-dark, #092D20);
+        border-color: rgba(18, 63, 45, 0.25);
+    }
+
+    .filter-btn.active, .filter-btn.active-filter {
+        background: linear-gradient(135deg, var(--cc-primary, #123F2D) 0%, var(--cc-secondary, #397447) 100%);
+        background-size: 200% 100%;
+        border-color: rgba(255,255,255,0.2);
+        color: white;
+        box-shadow: 0 4px 12px rgba(57, 116, 71, 0.25);
+    }
+
+    /* Mobile specific adjustments for a perfect single-line layout */
+    @@media (max-width: 576px) {
+        .division-filters {
+            width: 100%;
+            gap: 5px;
+            justify-content: flex-start;
+        }
+        .filter-btn {
+            flex: 0 0 auto;
+            padding: 8px 12px;
+            font-size: 0.75rem;
+            text-align: center;
+        }
+    }
+    .school-card { gap: 12px; padding: 14px 16px; min-height: 190px; }
+    .card-left-content { flex: 1 1 58%; min-width: 0; padding: 0; text-align: center; }
+    .area-card-logo { order: 2; flex: 0 0 38%; width: clamp(118px, 13vw, 160px); height: clamp(118px, 13vw, 160px); }
+    .team-acronym { font-size: 1.55rem; letter-spacing: .02em; margin-bottom: 6px; }
+    .team-division { display: block; font-size: .82rem; }
+    .area-summary { margin-top: 8px; }
+    .area-medals { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; font-weight: 700; font-size: .95rem; }
+    .area-rank { color: #f5e3a1; margin-bottom: 6px; font-weight: 800; }
+    .school-card:focus-visible { outline: 3px solid #c8a354; outline-offset: 4px; }
+    @@media (max-width: 767.98px) {
+        .school-card { min-height: 180px; padding: 10px 14px; gap: 8px; align-items: stretch; }
+        .card-left-content { flex: 0 0 45%; height: clamp(150px, 42vw, 180px); display: flex; flex-direction: column; justify-content: center; text-align: center; }
+        .area-card-logo { flex: 0 0 55%; width: 55%; height: clamp(150px, 42vw, 150px); max-height: none; object-fit: contain; align-self: center; }
+        .team-acronym { font-size: 1.8rem; margin-bottom: 7px; }
+        .team-division { font-size: .95rem; }
+        .area-summary { margin-top: 10px; }
+        .area-rank { font-size: 1.05rem; margin-bottom: 7px; }
+        .area-medals { gap: 9px; font-size: 1.08rem; white-space: nowrap; }
+    }
+</style>
+
+<div class="container py-5">
+    <h2 class="mb-4 text-center fw-bold" style="font-family: var(--font-body); color: var(--cc-primary, #123F2D);">
+        <i class="bi bi-people-fill text-warning me-2"></i>PARTICIPATING TEAMS
+    </h2>
+
+    <!-- Division Filter Selection -->
+    <div class="division-filters" role="group" aria-label="Division Filter">
+        <button type="button" class="btn filter-btn" data-filter="All">Overall</button>
+        <button type="button" class="btn filter-btn" data-filter="Secondary">Secondary</button>
+        <button type="button" class="btn filter-btn" data-filter="Elementary">Elementary</button>
+        <button type="button" class="btn filter-btn" data-filter="Paragames">Paragames</button>
+
+    </div>
+
+    <!-- Centered Grid Container -->
+    <div class="row g-4 justify-content-center" id="schoolsContainer">
+        @foreach (var division in new[] { "Elementary", "Secondary", "Paragames", "Overall" })
+        {
+            foreach (var team in Model)
+            {
+                var medals = Medals(team.Id, division);
+                var rank = Rank(medals, Model.Select(t => Medals(t.Id, division)));
+                <div class="col-md-6 col-lg-4 team-item" data-division="@(division == "Overall" ? "All" : division)" style="@(division == "Overall" ? null : "display: none;")">
+                <a asp-action="Details" asp-route-id="@team.Id" asp-route-division="@(division == "Overall" ? null : division)" class="school-card h-100">
+                    <div class="card-left-content">
+                        <h4 class="team-acronym" style="font-family: var(--font-body);">@(string.IsNullOrWhiteSpace(team.Acronym) ? team.Name : team.Acronym)</h4>
+                        <small class="team-division fw-bold text-uppercase">@division</small>
+                        <div class="area-summary">
+                            <div class="area-rank">Rank #@rank</div>
+                            <div class="area-medals"><span aria-label="@medals.Gold gold medals">🥇 @medals.Gold</span><span aria-label="@medals.Silver silver medals">🥈 @medals.Silver</span><span aria-label="@medals.Bronze bronze medals">🥉 @medals.Bronze</span></div>
+                        </div>
+                    </div>
+                    <img src="~/images/bohol_logo.png" alt="@(string.IsNullOrWhiteSpace(team.Acronym) ? team.Name : team.Acronym) logo" class="area-card-logo" />
+                </a>
+            </div>
+            }
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const buttons = document.querySelectorAll('.filter-btn');
+            const items = document.querySelectorAll('.team-item');
+
+            function filterItems(filterValue) {
+                items.forEach(item => {
+                    const division = item.getAttribute('data-division') || "";
+                    item.style.display = division.toLowerCase() === filterValue.toLowerCase() ? 'block' : 'none';
+                });
+            }
+
+            function setActiveButton(filterValue) {
+                buttons.forEach(b => {
+                    if ((b.getAttribute('data-filter') || '').toLowerCase() === filterValue.toLowerCase()) {
+                        b.classList.add('active');
+                    } else {
+                        b.classList.remove('active');
+                    }
+                });
+            }
+
+            buttons.forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const filter = this.getAttribute('data-filter');
+                    setActiveButton(filter);
+                    filterItems(filter);
+                    try {
+                        sessionStorage.setItem('prov_teams_dashboard_filter', filter);
+                    } catch (e) {}
+                });
+            });
+
+            let savedFilter = 'All';
+            try {
+                const stored = sessionStorage.getItem('prov_teams_dashboard_filter');
+                if (stored) savedFilter = stored;
+            } catch (e) {}
+
+            setActiveButton(savedFilter);
+            filterItems(savedFilter);
+        });
+    </script>
+}

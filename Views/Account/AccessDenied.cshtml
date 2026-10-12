@@ -1,0 +1,83 @@
+@{
+    ViewData["Title"] = "Access Denied";
+}
+
+<style>
+    /* ========================================== */
+    /* MASTER OPACITY & COLOR CONTROL             */
+    :root {
+        --card-opacity: 1.0; 
+    }
+    /* ========================================== */
+
+    body {
+        background-color: var(--cc-background) !important; 
+    }
+
+    .access-denied-card {
+        background: #ffffff !important;
+        border: 1px solid rgba(18, 63, 45, 0.12) !important;
+        box-shadow: 0 10px 30px rgba(18, 63, 45, 0.1) !important;
+        border-top: 5px solid #dc3545 !important;
+        border-radius: var(--cc-radius-lg, 14px);
+        padding: 2.5rem;
+    }
+
+    .btn-custom-primary {
+        background: linear-gradient(135deg, var(--cc-primary, #123F2D) 0%, var(--cc-secondary, #397447) 100%);
+        border: none;
+        color: white;
+        font-weight: 700;
+        padding: 0.6rem 1.25rem;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(18, 63, 45, 0.2);
+    }
+
+    .btn-custom-primary:hover {
+        opacity: 0.95;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(57, 116, 71, 0.3);
+        color: white;
+    }
+
+    .btn-custom-outline {
+        border: 1px solid var(--cc-border, #D9DEE5);
+        color: var(--cc-primary, #123F2D);
+        background: #ffffff;
+        font-weight: 700;
+        padding: 0.6rem 1.25rem;
+        border-radius: 6px;
+        transition: all 0.25s ease;
+    }
+
+    .btn-custom-outline:hover {
+        background: rgba(18, 63, 45, 0.04);
+        color: var(--cc-primary, #123F2D);
+        border-color: var(--cc-primary, #123F2D);
+    }
+</style>
+
+<div class="container py-5 mt-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-6 text-center">
+            <div class="access-denied-card">
+                <div class="mb-4">
+                    <i class="bi bi-shield-x text-danger" style="font-size: 4rem;"></i>
+                </div>
+                <h2 class="fw-bold text-danger mb-3" style="font-family: var(--font-body); letter-spacing: 0.5px;">ACCESS DENIED</h2>
+                <p class="text-muted fw-bold mb-4" style="font-family: var(--font-body); font-size: 0.95rem; line-height: 1.5;">
+                    You do not have permission to access or modify this resource. If you believe this is an error, please contact the administrator.
+                </p>
+                <div class="d-flex justify-content-center gap-3 flex-wrap">
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-custom-outline">
+                        <i class="bi bi-house-door me-1"></i> Return Home
+                    </a>
+                    <a asp-controller="Account" asp-action="Login" class="btn btn-custom-primary">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> Switch Account
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,14 @@
+.git
+.vs
+.vscode
+bin
+obj
+.env
+.env.*
+appsettings.Local.json
+appsettings.*.local.json
+keys
+**/*.pfx
+**/*.p12
+**/*.key
+**/*.pem

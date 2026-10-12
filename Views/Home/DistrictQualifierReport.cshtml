@@ -1,0 +1,994 @@
+@using ProvMeet.Services
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using System.Text.RegularExpressions
+@inject ProvMeet.Data.ApplicationDbContext DbContext
+@model IEnumerable<ProvMeet.Models.EventQualifier>
+@{
+    ViewData["Title"] = "Regional Qualifier Report";
+    var reportTimestamp = DateTime.UtcNow.AddHours(8).ToString("MMMM dd, yyyy h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
+    
+    var allDbEvents = DbContext.Events.ToList();
+    var selectedSports = (Context.Request.Query["sportsName"].ToString() ?? "")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .ToList();
+    var selectedEvents = (Context.Request.Query["eventId"].ToString() ?? "")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .ToList();
+    var selectedDivisions = (Context.Request.Query["division"].ToString() ?? "")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .ToList();
+    var selectedDistricts = (Context.Request.Query["district"].ToString() ?? "")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .ToList();
+
+    var titleFilters = new List<string>();
+    if (selectedSports.Any()) titleFilters.Add(string.Join(", ", selectedSports));
+    if (selectedDistricts.Any()) titleFilters.Add(string.Join(", ", selectedDistricts));
+    if (selectedDivisions.Any()) titleFilters.Add(string.Join(", ", selectedDivisions));
+    if (selectedEvents.Any()) titleFilters.Add(string.Join(", ", allDbEvents.Where(e => selectedEvents.Contains(e.Id.ToString())).Select(e => e.Title)));
+    string selectedSportsText = titleFilters.Any() ? string.Join(" - ", titleFilters).ToUpperInvariant() : "OVERALL";
+    // Helper lambda to determine division
+    string GetEventDivision(ProvMeet.Models.Event evt) {
+        if (evt == null) return "";
+        string div = "";
+        var prop = evt.GetType().GetProperty("Division");
+        if (prop != null) {
+            div = (prop.GetValue(evt) as string)?.ToUpper() ?? "";
+        } else if (evt.Title != null) {
+            if (evt.Title.IndexOf("ELEM", StringComparison.OrdinalIgnoreCase) >= 0) div = "ELEMENTARY";
+            else if (evt.Title.IndexOf("SEC", StringComparison.OrdinalIgnoreCase) >= 0) div = "SECONDARY";
+        }
+        return div;
+    }
+
+    // Helper method to convert names to Proper Case (Title Case)
+    string ToProperCase(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return text;
+        var textInfo = new System.Globalization.CultureInfo("en-US", false).TextInfo;
+        return textInfo.ToTitleCase(text.ToLower());
+    }
+
+    // Identical sorting sequence to the District Qualifier Report view
+    var reportQualifiers = Model?
+        .OrderBy(q => {
+            var evt = allDbEvents.FirstOrDefault(e => e.Id == q.EventId);
+            string div = evt != null ? GetEventDivision(evt) : "";
+            if (div.Contains("ELEM")) return 1;
+            if (div.Contains("SEC")) return 2;
+            return 3;
+        })
+        .ThenBy(q => {
+            var evt = allDbEvents.FirstOrDefault(e => e.Id == q.EventId);
+            return evt?.SportName ?? "";
+        })
+        .ThenBy(q => {
+            var evt = allDbEvents.FirstOrDefault(e => e.Id == q.EventId);
+            string sport = evt?.SportName?.Trim() ?? "";
+            string title = evt?.Title?.ToLower() ?? "";
+
+            if (sport.Equals("Arnis", StringComparison.OrdinalIgnoreCase))
+            {
+                int anyoOrder = title.Contains("anyo") ? 1 : 2;
+                int genderOrder = 3;
+                if (Regex.IsMatch(title, @"\b(girls?|women'?s?)\b")) genderOrder = 1;
+                else if (Regex.IsMatch(title, @"\b(boys?|men'?s?)\b")) genderOrder = 2;
+                
+                return anyoOrder * 10 + genderOrder;
+            }
+
+            if (sport.Equals("Gymnastics", StringComparison.OrdinalIgnoreCase))
+            {
+                int disciplineOrder = title.Contains("aerobic") ? 1 : 2;
+                int genderOrder = 3;
+                if (Regex.IsMatch(title, @"\b(girls?|women'?s?)\b")) genderOrder = 1;
+                else if (Regex.IsMatch(title, @"\b(boys?|men'?s?)\b")) genderOrder = 2;
+                
+                return disciplineOrder * 10 + genderOrder;
+            }
+
+            if (Regex.IsMatch(title, @"\b(girls?|women'?s?)\b")) return 1;
+            if (Regex.IsMatch(title, @"\b(boys?|men'?s?)\b")) return 2;
+            return 3; 
+        })
+        .ThenBy(q => {
+            var evt = allDbEvents.FirstOrDefault(e => e.Id == q.EventId);
+            return evt?.Title ?? "";
+        })
+        .ThenBy(q => {
+            string r = q.Role?.ToLower() ?? "";
+            if (r.Contains("athlete")) return 1;
+            if (r.Contains("assistant coach")) return 3;
+            if (r.Contains("coach")) return 2;
+            if (r.Contains("chaperon") || r.Contains("chaperone")) return 4;
+            return 5;
+        })
+        .ThenBy(q => {
+            var evt = allDbEvents.FirstOrDefault(e => e.Id == q.EventId);
+            if (evt != null && !string.IsNullOrEmpty(q.ParticipantName)) {
+                if (!string.IsNullOrEmpty(evt.GoldWinnerName) && evt.GoldWinnerName.Contains(q.ParticipantName)) return 1;
+                if (!string.IsNullOrEmpty(evt.SilverWinnerName) && evt.SilverWinnerName.Contains(q.ParticipantName)) return 2;
+                if (!string.IsNullOrEmpty(evt.BronzeWinnerName) && evt.BronzeWinnerName.Contains(q.ParticipantName)) return 3;
+            }
+            return 4;
+        })
+        .ToList() ?? new List<ProvMeet.Models.EventQualifier>();
+
+    ProvMeet.Models.Event? GetEvent(int eventId)
+    {
+        return allDbEvents.FirstOrDefault(e => e.Id == eventId);
+    }
+
+    var globalTshirtSizes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var q in reportQualifiers)
+    {
+        string pName = q.ParticipantName?.Trim() ?? "";
+        string dName = q.Team?.Trim() ?? "";
+        string tSize = q.TshirtSize?.Trim() ?? "";
+        
+        if (!string.IsNullOrEmpty(pName) && !string.IsNullOrEmpty(tSize) && !tSize.Equals("N/A", StringComparison.OrdinalIgnoreCase))
+        {
+            string key = $"{pName}_{dName}";
+            if (!globalTshirtSizes.ContainsKey(key))
+            {
+                globalTshirtSizes[key] = tSize;
+            }
+        }
+    }
+
+    int uniqueQualifiersCount = reportQualifiers
+        .Where(q => !string.IsNullOrWhiteSpace(q.ParticipantName))
+        .Select(q => $"{q.ParticipantName?.Trim().ToLower()}_{q.Team?.Trim().ToLower()}")
+        .Distinct()
+        .Count();
+
+    string PersonKey(ProvMeet.Models.EventQualifier q) => $"{q.ParticipantName?.Trim().ToUpperInvariant()}|{q.Team?.Trim().ToUpperInvariant()}";
+    int CountPeople(IEnumerable<ProvMeet.Models.EventQualifier> people) => people
+        .Where(q => !string.IsNullOrWhiteSpace(q.ParticipantName)).Select(PersonKey).Distinct().Count();
+    string SummaryRole(string? role) {
+        var value = (role ?? "").Trim().ToLowerInvariant();
+        if (value.Contains("athlete")) return "Athletes";
+        if (value.Contains("assistant") && value.Contains("coach")) return "Assistant Coaches";
+        if (value.Contains("coach")) return "Coaches";
+        if (value.Contains("chaperon")) return "Chaperones";
+        return "Other / Unspecified";
+    }
+    var summaryPeople = reportQualifiers.Where(q => !string.IsNullOrWhiteSpace(q.ParticipantName))
+        .GroupBy(PersonKey).Select(g => g.First()).ToList();
+    var summaryCounts = new[] { "Athletes", "Coaches", "Assistant Coaches", "Chaperones", "Other / Unspecified" }
+        .Select(role => new { Role = role, Count = summaryPeople.Count(q => SummaryRole(q.Role) == role) })
+        .Where(item => item.Role != "Other / Unspecified" || item.Count > 0).ToList();
+
+    string ParticipantGroup(ProvMeet.Models.EventQualifier qualifier) {
+        var evt = GetEvent(qualifier.EventId);
+        if (evt != null && PlayerMedals.Category(evt) != "Unspecified") return PlayerMedals.Category(evt);
+        var title = evt?.Title ?? "";
+        bool boys = Regex.IsMatch(title, @"\bboys?\b", RegexOptions.IgnoreCase);
+        bool girls = Regex.IsMatch(title, @"\bgirls?\b", RegexOptions.IgnoreCase);
+        return boys && !girls ? "Boys" : girls && !boys ? "Girls" : "Mixed";
+    }
+
+    void RenderSummary(string id) {
+        <section class="participant-summary">
+            <h5 class="section-subtitle">SUMMARY</h5>
+            <table class="table-report" id="@id">
+                <thead><tr><th>Participant Category</th><th class="text-center" style="width: 20%;">Count</th></tr></thead>
+                <tbody>
+                    @foreach (var item in summaryCounts) {
+                        <tr><td>@item.Role</td><td class="text-center">@item.Count</td></tr>
+                    }
+                    <tr><td><strong>Total</strong></td><td class="text-center"><strong>@summaryPeople.Count</strong></td></tr>
+                </tbody>
+            </table>
+        </section>
+    }
+    // ==========================================
+    // LOGIC FOR DISTRICT QUALIFIER REPORT
+    // ==========================================
+    string lastRenderedSport = "";
+    string lastRenderedEvent = "";
+    HashSet<string> seenParticipantsForTshirt = new HashSet<string>();
+
+    void ResetTracker()
+    {
+        lastRenderedSport = "";
+        lastRenderedEvent = "";
+    }
+
+    void RenderQualifierRow(ProvMeet.Models.EventQualifier qualifier)
+    {
+        var evt = GetEvent(qualifier.EventId);
+        string sportName = evt?.SportName ?? "N/A";
+        string eventTitle = evt?.Title ?? "N/A";
+        string div = evt != null ? GetEventDivision(evt) : "";
+        
+        string roleDisplay = !string.IsNullOrEmpty(qualifier.Role) 
+            ? char.ToUpper(qualifier.Role.First()) + qualifier.Role.Substring(1).ToLower() 
+            : "N/A";
+
+        string displaySport = sportName == lastRenderedSport ? "" : sportName;
+        string displayEvent = eventTitle == lastRenderedEvent ? "" : eventTitle;
+
+        lastRenderedSport = sportName;
+        lastRenderedEvent = eventTitle;
+
+        string pNameKey = qualifier.ParticipantName?.Trim() ?? "";
+        string dNameKey = qualifier.Team?.Trim() ?? "";
+        string globalKey = $"{pNameKey}_{dNameKey}";
+        string bestTshirtSize = globalTshirtSizes.ContainsKey(globalKey) ? globalTshirtSizes[globalKey] : "N/A";
+
+        string globalParticipantKey = $"{qualifier.ParticipantName?.Trim().ToLower()}_{qualifier.Team?.Trim().ToLower()}";
+        bool isDuplicateTshirt = !seenParticipantsForTshirt.Add(globalParticipantKey);
+
+        string tShirtDisplay = isDuplicateTshirt ? "-" : bestTshirtSize;
+
+        <tr>
+            <td class="text-start">
+                @* Sport name and total are shown once in the sport heading. *@
+            </td>
+            <td class="text-start"><div class="event-title-clamp">@displayEvent</div></td>
+            <td class="text-start"><strong>@(string.IsNullOrEmpty(qualifier.ParticipantName) ? "N/A" : ToProperCase(qualifier.ParticipantName))</strong></td>
+            <td class="text-start">@(string.IsNullOrEmpty(qualifier.Team) ? "N/A" : qualifier.Team)</td>
+            <td class="text-center">@roleDisplay</td>
+            <td class="text-center">@tShirtDisplay</td>
+            <td></td>
+        </tr>
+    }
+
+    // ==========================================
+    // LOGIC FOR PARTICIPANT LIST
+    // ==========================================
+    string lastRenderedSport_PL = "";
+    HashSet<string> seenParticipantsForList = new HashSet<string>();
+    HashSet<string> seenParticipantsForTshirt_PL = new HashSet<string>();
+
+    void ResetTracker_PL()
+    {
+        lastRenderedSport_PL = "";
+        seenParticipantsForList.Clear();
+    }
+
+    void RenderParticipantRow(ProvMeet.Models.EventQualifier qualifier)
+    {
+        var evt = GetEvent(qualifier.EventId);
+        string sportName = evt?.SportName ?? "N/A";
+        string div = evt != null ? GetEventDivision(evt) : "";
+        
+        string categoryKey = ParticipantRoles.Order(qualifier.Role) == 0 ? ParticipantGroup(qualifier) : "Staff";
+        string eventParticipantKey = $"{div}_{sportName}_{categoryKey}_{qualifier.ParticipantName?.Trim().ToLower()}_{qualifier.Team?.Trim().ToLower()}_{qualifier.Role?.Trim().ToLower()}";
+        if (!seenParticipantsForList.Add(eventParticipantKey)) return; 
+
+        string roleDisplay = !string.IsNullOrEmpty(qualifier.Role) 
+            ? char.ToUpper(qualifier.Role.First()) + qualifier.Role.Substring(1).ToLower() 
+            : "N/A";
+
+        string displaySport = sportName == lastRenderedSport_PL ? "" : sportName;
+        lastRenderedSport_PL = sportName;
+
+        string pNameKey = qualifier.ParticipantName?.Trim() ?? "";
+        string dNameKey = qualifier.Team?.Trim() ?? "";
+        string globalKey = $"{pNameKey}_{dNameKey}";
+        string bestTshirtSize = globalTshirtSizes.ContainsKey(globalKey) ? globalTshirtSizes[globalKey] : "N/A";
+
+        string globalParticipantKey = $"{qualifier.ParticipantName?.Trim().ToLower()}_{qualifier.Team?.Trim().ToLower()}";
+        bool isDuplicateTshirt = !seenParticipantsForTshirt_PL.Add(globalParticipantKey);
+        string tShirtDisplay = isDuplicateTshirt ? "-" : bestTshirtSize;
+
+        <tr>
+            <td class="text-start">
+                @* Sport name and total are shown once in the sport heading. *@
+            </td>
+            <td class="text-start"><strong>@(string.IsNullOrEmpty(qualifier.ParticipantName) ? "N/A" : ToProperCase(qualifier.ParticipantName))</strong></td>
+            <td class="text-start">@(string.IsNullOrEmpty(qualifier.Team) ? "N/A" : qualifier.Team)</td>
+            <td class="text-center">@roleDisplay</td>
+            <td class="text-center">@tShirtDisplay</td>
+            <td></td>
+        </tr>
+    }
+}
+
+<!-- Include Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<style>
+    .sport-total { background: #f5e8c7 !important; font-weight: 700; }
+    .participant-group[data-category="Boys"] td { background: #e4eef9 !important; }
+    .participant-group[data-category="Girls"] td { background: #f5e5ed !important; }
+    .participant-group[data-category="Mixed"] td { background: #e5f1e9 !important; }
+    .sport-total, .participant-group td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .participant-group { break-after: avoid; page-break-after: avoid; }
+    .participant-summary { break-inside: avoid; margin-top: 16px; }
+    .table-report td.text-center.group-header { text-align: center !important; }
+    .report-wrapper {
+        background-color: #ffffff; 
+        color: #000000; 
+        font-family: Arial, Helvetica, sans-serif;
+        max-width: 950px;
+        margin: 0 auto;
+        padding: 25px 35px;
+        border-radius: 8px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .report-header-text { font-size: 0.82rem; margin-bottom: 2px; font-weight: 600; color: #000000; }
+    .report-header-title { font-size: 1.05rem; font-weight: 800; margin-top: 4px; margin-bottom: 2px; color: #000000; letter-spacing: 0.5px; }
+    .report-divider { border-top: 1.5px solid #000000; margin: 8px 0; width: 100%; }
+    .report-title { font-size: 1.15rem; font-weight: 800; letter-spacing: 0.5px; color: #000000; }
+    
+    .meta-col { border-right: 1px solid #000000; }
+    .meta-col:last-child { border-right: none; }
+    .meta-label { font-size: 0.62rem; color: #000000; margin-bottom: 1px; font-weight: 700; letter-spacing: 0.5px; }
+    .meta-value { font-size: 0.8rem; font-weight: bold; color: #000000; }
+    
+    .section-subtitle { font-size: 0.95rem; font-weight: 800; letter-spacing: 0.4px; margin-bottom: 8px; margin-top: 4px; }
+    
+    .table-report { width: 100%; border-collapse: collapse; margin-bottom: 15px; background-color: #ffffff; border: 1px solid #000000; }
+    
+    .table-report th { padding: 5px 8px; font-size: 0.72rem; font-weight: bold; border-bottom: 2px solid #000000; color: #000000; background-color: #f2f2f2; }
+    .table-report td { padding: 5px 8px; font-size: 0.72rem; border-bottom: 1px solid #cccccc; vertical-align: top; color: #000000; }
+    .group-header { background-color: #e9ecef !important; color: #000000 !important; font-weight: bold !important; text-align: left !important; font-size: 0.78rem !important; padding: 4px 8px !important; border-top: 1.5px solid #000000 !important; border-bottom: 1.5px solid #000000 !important; }
+
+    .event-title-clamp {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: normal; 
+    }
+
+    .cert-text { font-size: 0.8rem; line-height: 1.4; color: #000000; margin-bottom: 15px; text-align: justify; }
+    
+    .setup-card {
+        background-color: #ffffff;
+        border: 1px solid rgba(0, 51, 160, 0.15);
+        border-top: 4px solid #123F2D;
+        max-width: 1200px;
+        margin: 0 auto 20px auto;
+        border-radius: 12px;
+        box-shadow: 0 8px 25px rgba(0, 51, 160, 0.08);
+    }
+
+    .dynamic-signatures-container { text-align: center; width: 100%; }
+    .sig-block { display: inline-block; width: 48%; vertical-align: top; margin-top: 25px; text-align: center; page-break-inside: avoid !important; }
+    .sig-block-odd { width: 100% !important; display: block; margin-left: auto; margin-right: auto; }
+    .sig-title { font-size: 0.8rem; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #000000; padding-bottom: 2px; display: inline-block; min-width: 190px; }
+    .sig-line { font-size: 0.72rem; margin-top: 2px; }
+
+    /* Page Setup tailored specifically for Long Bond Paper (8.5 x 13 inches) */
+    @@page {
+        size: 8.5in 13in portrait;
+        margin: 0.4in !important; 
+    }
+
+    @@media print {
+        header, footer, nav, .d-print-none, #setup-section { display: none !important; }
+        html, body, main { background-color: #ffffff !important; margin: 0 !important; padding: 0 !important; color: #000000 !important; width: 100% !important; height: auto !important; overflow: visible !important; }
+        .container, .container-fluid, .pb-3, #report-section, #participant-section { width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 auto !important; }
+
+        .report-wrapper {
+            display: block !important; 
+            position: static !important;
+            width: 100% !important; 
+            max-width: 100% !important;
+            margin: 0 auto !important; 
+            padding: 0 !important;
+            box-shadow: none !important;
+        }
+
+        .report-divider { border-top: 1.5px solid #000000 !important; margin: 8px 0 !important; }
+        .meta-col { border-right: 1px solid #cccccc !important; width: 50%; display: inline-block; vertical-align: top; }
+        .meta-label { color: #000000 !important; font-size: 0.62rem !important; }
+        .meta-value { color: #000000 !important; font-size: 0.8rem !important; }
+        
+        .table-report { border: 1px solid #000000 !important; margin-bottom: 15px !important; width: 100% !important; }
+        .table-report thead { display: table-header-group; }
+        .table-report tr { page-break-inside: avoid; }
+        .table-report th { background-color: #f2f2f2 !important; color: #000000 !important; border-bottom: 2px solid #000000 !important; padding: 4px 6px !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .table-report td { color: #000000 !important; border-bottom: 1px solid #cccccc !important; padding: 4px 6px !important; }
+        .group-header { background-color: #e9ecef !important; color: #000000 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        
+        .dynamic-signatures-container { text-align: center !important; width: 100% !important; }
+        .sig-block { display: inline-block !important; width: 48% !important; vertical-align: top; page-break-inside: avoid !important; margin-top: 20px !important; text-align: center !important; }
+        .sig-block-odd { width: 100% !important; display: block !important; margin-left: auto !important; margin-right: auto !important; }
+        .sig-title { font-size: 0.8rem; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #000000; padding-bottom: 2px; display: inline-block; min-width: 190px; color: #000000 !important; }
+        .sig-line { font-size: 0.72rem; margin-top: 2px; color: #000000 !important; }
+        .row::after { content: ""; clear: both; display: table; }
+    }
+</style>
+
+<div class="container py-4">
+
+    <!-- STEP 1: CONFIGURATION SETUP -->
+    <div id="setup-section" class="card setup-card p-4 mb-4 d-print-none">
+        <h4 class="fw-bold mb-3 border-bottom pb-2" style="color: #123F2D;">
+            Configure Qualifier Filters
+        </h4>
+        
+        <div class="mb-4 bg-light p-3 rounded border">
+            <form method="get" asp-action="DistrictQualifierReport" id="filterForm">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold mb-1">Filter by Sports</label>
+                        <select name="sportsName" class="form-select select2-multi" multiple="multiple" data-placeholder="-- All Sports --">
+                            @if (ViewBag.SportsList != null)
+                            {
+                                foreach (var sport in ViewBag.SportsList)
+                                {
+                                    if (selectedSports.Contains(sport.Value)) { <option value="@sport.Value" selected>@sport.Text</option> }
+                                    else { <option value="@sport.Value">@sport.Text</option> }
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold mb-1">Filter by Event</label>
+                        <select name="eventId" class="form-select select2-multi" multiple="multiple" data-placeholder="-- All Events --">
+                            @if (ViewBag.EventsList != null)
+                            {
+                                foreach (var evt in ViewBag.EventsList)
+                                {
+                                    if (selectedEvents.Contains(evt.Value)) { <option value="@evt.Value" selected>@evt.Text</option> }
+                                    else { <option value="@evt.Value">@evt.Text</option> }
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold mb-1">Filter by Division</label>
+                        <select name="division" class="form-select select2-multi" multiple="multiple" data-placeholder="-- All Divisions --">
+                            @if (ViewBag.DivisionsList != null)
+                            {
+                                foreach (var div in ViewBag.DivisionsList)
+                                {
+                                    if (selectedDivisions.Contains(div.Value)) { <option value="@div.Value" selected>@div.Text</option> }
+                                    else { <option value="@div.Value">@div.Text</option> }
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold mb-1">Filter by Team</label>
+                        <select name="district" class="form-select select2-multi" multiple="multiple" data-placeholder="-- All Teams --">
+                            @if (ViewBag.DistrictsList != null)
+                            {
+                                foreach (var dist in ViewBag.DistrictsList)
+                                {
+                                    if (selectedDistricts.Contains(dist.Value)) { <option value="@dist.Value" selected>@dist.Text</option> }
+                                    else { <option value="@dist.Value">@dist.Text</option> }
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-md-12 text-end mt-3">
+                        <button type="submit" class="btn text-white shadow-sm px-4 fw-bold" style="background-color: #123F2D;" onclick="saveSignatories();">Apply Filters</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Signatories Configuration -->
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label fw-bold mb-0" style="color: #123F2D;">Signatories</label>
+                <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="addSignatory()">Add Signatory</button>
+            </div>
+            <div id="signatory-error" class="alert alert-danger py-2 px-3 mb-3 fw-bold" style="display: none;">Please enter at least one signatory.</div>
+            <div id="signatories-container"></div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-2">
+            <a asp-action="Index" class="btn btn-outline-secondary px-4 fw-bold">Cancel</a>
+            <a asp-action="EditQualifiers" class="btn btn-outline-primary px-4 fw-bold">Edit Qualifiers</a>
+            <button type="button" class="btn text-white px-4 fw-bold" style="background-color: #397447;" onclick="generateReport('participant')">List of Participants</button>
+            <button type="button" class="btn text-white px-4 fw-bold" style="background-color: #123F2D;" onclick="generateReport('qualifier')">Generate Report Preview</button>
+        </div>
+    </div>
+
+    <!-- STEP 2A: REPORT PREVIEW / PRINT AREA (QUALIFIER REPORT) -->
+    <div id="report-section" style="display: none;">
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center mb-4 mx-auto gap-3 d-print-none" style="max-width: 950px;">
+            <button onclick="backToSetup()" class="btn btn-outline-secondary btn-sm fw-bold">Back to Configuration</button>
+            <div class="d-flex gap-2">
+                <button onclick="window.print()" class="btn text-white shadow px-4 fw-bold" style="background-color: #123F2D;"><i class="bi bi-printer"></i> Print / Save PDF</button>
+                <button onclick="generateExcel('qualifier')" class="btn btn-success shadow px-4 fw-bold"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+            </div>
+        </div>
+
+        <div class="report-wrapper">
+            <div>
+                <div class="text-center">
+                    <div class="report-header-text">Republic of the Philippines</div>
+                    <div class="report-header-text">Department of Education</div>
+                    <div class="report-header-text">Division of Bohol</div>
+                    <div class="report-header-title">Bohol Provincial Athletic Meet 2026</div>
+                </div>
+
+                <div class="report-divider"></div>
+
+                <div class="text-center mb-2">
+                    <div class="report-title">HIGHER MEET QUALIFIER 2026</div>
+                </div>
+
+                <div class="report-divider"></div>
+
+                <div class="row text-center py-1">
+                    <div class="col-6 meta-col">
+                        <div class="meta-label">REPORT DATE</div>
+                        <div class="meta-value">@reportTimestamp</div>
+                    </div>
+                    <div class="col-6 meta-col">
+                        <div class="meta-label">TOTAL QUALIFIERS</div>
+                        <div class="meta-value">@(uniqueQualifiersCount) Participants</div>
+                    </div>
+                </div>
+
+                <div class="report-divider"></div>
+
+                <h5 class="section-subtitle">QUALIFIED PARTICIPANTS LIST - @selectedSportsText</h5>
+                <table class="table-report" id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th class="text-start" style="width: 14%;">Sports</th>
+                            <th class="text-start" style="width: 22%;">Event Title</th>
+                            <th class="text-start" style="width: 24%;">Participant Name</th>
+                            <th class="text-start" style="width: 15%;">Team</th>
+                            <th class="text-center" style="width: 8%;">Role</th>
+                            <th class="text-center" style="width: 10%;">T-Shirt Sizes</th>
+                            <th class="text-center" style="width: 7%;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!reportQualifiers.Any()) {
+                            <tr><td colspan="7" class="text-center py-4">No qualifier records available for the current filters.</td></tr>
+                        }
+                        @foreach (var divisionGroup in reportQualifiers.GroupBy(q => GetEventDivision(GetEvent(q.EventId)!) )) {
+                            ResetTracker();
+                            <tr><td colspan="6" class="group-header">@(string.IsNullOrWhiteSpace(divisionGroup.Key) ? "OTHER EVENTS" : divisionGroup.Key + " DIVISION")</td><td class="group-header text-center">@CountPeople(divisionGroup)</td></tr>
+                            @foreach (var sportGroup in divisionGroup.GroupBy(q => GetEvent(q.EventId)?.SportName ?? "N/A")) {
+                                <tr><td colspan="6" class="sport-total">@sportGroup.Key</td><td class="sport-total text-center">@CountPeople(sportGroup)</td></tr>
+                                @foreach (var category in new[] { "Boys", "Girls", "Mixed" }) {
+                                    var participants = sportGroup.Where(q => ParticipantRoles.Order(q.Role) == 0 && ParticipantGroup(q) == category).ToList();
+                                    if (!participants.Any()) { continue; }
+                                    ResetTracker();
+                                    <tr class="participant-group" data-category="@category"><td></td><td><strong>@category</strong></td><td></td><td></td><td></td><td></td><td class="text-center"><strong>@CountPeople(participants)</strong></td></tr>
+                                    foreach (var q in participants) { RenderQualifierRow(q); }
+                                }
+                                var staff = sportGroup.Where(q => ParticipantRoles.Order(q.Role) > 0).OrderBy(q => ParticipantRoles.Order(q.Role)).ThenBy(q => q.ParticipantName).ToList();
+                                if (staff.Any()) {
+                                    <tr class="participant-group"><td colspan="6"><strong>Coaches and support staff</strong></td><td class="text-center">@CountPeople(staff)</td></tr>
+                                    @foreach (var category in new[] { "Boys", "Girls", "Mixed" }) {
+                                        var categoryStaff = staff.Where(q => ParticipantGroup(q) == category).ToList();
+                                        if (!categoryStaff.Any()) { continue; }
+                                        ResetTracker();
+                                        <tr class="participant-group staff-category" data-category="@category"><td></td><td><strong>@category</strong></td><td></td><td></td><td></td><td></td><td class="text-center"><strong>@CountPeople(categoryStaff)</strong></td></tr>
+                                        foreach (var q in categoryStaff) { RenderQualifierRow(q); }
+                                    }
+                                }
+                            }
+                        }
+                    </tbody>
+                </table>
+
+                @{ RenderSummary("qualifier-summary"); }
+
+                <h5 class="fw-bold mb-1 mt-3" style="font-size: 0.95rem; letter-spacing: 0.4px;">CERTIFICATION</h5>
+                <p class="cert-text">
+                    This official report lists all confirmed athletes, coaches, and chaperones qualified for the higher meet, 
+                    verified and recorded through the Provincial Meet Management System.
+                </p>
+
+                <div class="report-divider" style="margin-bottom: 20px;"></div>
+                <div class="row dynamic-signatures-container" id="dynamic-signatures-qualifier"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STEP 2B: REPORT PREVIEW / PRINT AREA (PARTICIPANT LIST) -->
+    <div id="participant-section" style="display: none;">
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center mb-4 mx-auto gap-3 d-print-none" style="max-width: 950px;">
+            <button onclick="backToSetup()" class="btn btn-outline-secondary btn-sm fw-bold">Back to Configuration</button>
+            <div class="d-flex gap-2">
+                <button onclick="window.print()" class="btn text-white shadow px-4 fw-bold" style="background-color: #397447;"><i class="bi bi-printer"></i> Print / Save PDF</button>
+                <button onclick="generateExcel('participant')" class="btn btn-success shadow px-4 fw-bold"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+            </div>
+        </div>
+
+        <div class="report-wrapper">
+            <div>
+                <div class="text-center">
+                    <div class="report-header-text">Republic of the Philippines</div>
+                    <div class="report-header-text">Department of Education</div>
+                    <div class="report-header-text">Division of Bohol</div>
+                    <div class="report-header-title">Bohol Provincial Athletic Meet 2026</div>
+                    <div class="report-header-text" style="font-weight: normal;">Province of Bohol</div>
+                </div>
+
+                <div class="report-divider"></div>
+
+                <div class="text-center mb-2">
+                    <div class="report-title">LIST OF QUALIFIERS 2026</div>
+                </div>
+
+                <div class="report-divider"></div>
+
+                <div class="row text-center py-1">
+                    <div class="col-6 meta-col">
+                        <div class="meta-label">REPORT DATE</div>
+                        <div class="meta-value">@reportTimestamp</div>
+                    </div>
+                    <div class="col-6 meta-col">
+                        <div class="meta-label">TOTAL QUALIFIERS</div>
+                        <div class="meta-value">@(uniqueQualifiersCount) Qualifiers</div>
+                    </div>
+                </div>
+
+                <div class="report-divider"></div>
+                
+                <h5 class="section-subtitle">PARTICIPANT LIST - @selectedSportsText</h5>
+                <table class="table-report" id="participantTable">
+                    <thead>
+                        <tr>
+                            <th class="text-start" style="width: 15%;">Sports</th>
+                            <th class="text-start" style="width: 33%;">Participant Name</th>
+                            <th class="text-start" style="width: 23%;">Team</th>
+                            <th class="text-center" style="width: 11%;">Role</th>
+                            <th class="text-center" style="width: 11%;">T-Shirt Sizes</th>
+                            <th class="text-center" style="width: 7%;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!reportQualifiers.Any()) {
+                            <tr><td colspan="6" class="text-center py-4">No qualifier records available for the current filters.</td></tr>
+                        }
+                        @foreach (var divisionGroup in reportQualifiers.GroupBy(q => GetEventDivision(GetEvent(q.EventId)!) )) {
+                            ResetTracker_PL();
+                            <tr><td colspan="5" class="group-header">@(string.IsNullOrWhiteSpace(divisionGroup.Key) ? "OTHER EVENTS" : divisionGroup.Key + " DIVISION")</td><td class="group-header text-center">@CountPeople(divisionGroup)</td></tr>
+                            @foreach (var sportGroup in divisionGroup.GroupBy(q => GetEvent(q.EventId)?.SportName ?? "N/A")) {
+                                <tr><td colspan="5" class="sport-total">@sportGroup.Key</td><td class="sport-total text-center">@CountPeople(sportGroup)</td></tr>
+                                @foreach (var category in new[] { "Boys", "Girls", "Mixed" }) {
+                                    var participants = sportGroup.Where(q => ParticipantRoles.Order(q.Role) == 0 && ParticipantGroup(q) == category).ToList();
+                                    if (!participants.Any()) { continue; }
+                                    <tr class="participant-group" data-category="@category"><td></td><td><strong>@category</strong></td><td></td><td></td><td></td><td class="text-center"><strong>@CountPeople(participants)</strong></td></tr>
+                                    foreach (var q in participants) { RenderParticipantRow(q); }
+                                }
+                                var staff = sportGroup.Where(q => ParticipantRoles.Order(q.Role) > 0).OrderBy(q => ParticipantRoles.Order(q.Role)).ThenBy(q => q.ParticipantName).ToList();
+                                if (staff.Any()) {
+                                    <tr class="participant-group"><td colspan="5"><strong>Coaches and support staff</strong></td><td class="text-center">@CountPeople(staff)</td></tr>
+                                    @foreach (var category in new[] { "Boys", "Girls", "Mixed" }) {
+                                        var categoryStaff = staff.Where(q => ParticipantGroup(q) == category).ToList();
+                                        if (!categoryStaff.Any()) { continue; }
+                                        ResetTracker_PL();
+                                        <tr class="participant-group staff-category" data-category="@category"><td></td><td><strong>@category</strong></td><td></td><td></td><td></td><td class="text-center"><strong>@CountPeople(categoryStaff)</strong></td></tr>
+                                        foreach (var q in categoryStaff) { RenderParticipantRow(q); }
+                                    }
+                                }
+                            }
+                        }
+                    </tbody>
+                </table>
+
+                @{ RenderSummary("participant-summary"); }
+
+                <h5 class="fw-bold mb-1 mt-3" style="font-size: 0.95rem; letter-spacing: 0.4px;">CERTIFICATION</h5>
+                <p class="cert-text">
+                    This official report lists all confirmed qualifiers, coaches, and chaperones verified and recorded through the Provincial Meet Management System.
+                </p>
+
+                <div class="report-divider" style="margin-bottom: 20px;"></div>
+                <div class="row dynamic-signatures-container" id="dynamic-signatures-participant"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    
+    <script>
+        let activeSignatories = [];
+        const dynamicReportSelectedSportsText = @Json.Serialize(selectedSportsText);
+
+        $(document).ready(function() {
+            loadSignatories();
+            $('.select2-multi').select2({ placeholder: '-- All --', allowClear: true, width: '100%', multiple: true });
+        });
+
+        function saveSignatories() {
+            const dataToSave = [];
+            document.querySelectorAll('.signatory-row').forEach(row => {
+                dataToSave.push({ name: row.querySelector('.sig-name').value, designation: row.querySelector('.sig-designation').value });
+            });
+            sessionStorage.setItem('prov_qualifier_signatories', JSON.stringify(dataToSave));
+        }
+
+        function loadSignatories() {
+            const stored = sessionStorage.getItem('prov_qualifier_signatories');
+            const container = document.getElementById('signatories-container');
+            container.innerHTML = ''; 
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (parsed.length > 0) {
+                    parsed.forEach(s => addSignatoryRow(s.name, s.designation));
+                    return;
+                }
+            }
+            addSignatoryRow('MARIO L. GARCIA, PhD', 'Chief Recorder');
+        }
+
+        function addSignatoryRow(name = '', desig = '') {
+            const container = document.getElementById('signatories-container');
+            const row = document.createElement('div');
+            row.className = 'row mb-2 signatory-row';
+            row.innerHTML = `
+                <div class="col-sm-5"><input type="text" class="form-control sig-name" placeholder="Name" value="${name}" /></div>
+                <div class="col-sm-6"><input type="text" class="form-control sig-designation" placeholder="Designation" value="${desig}" /></div>
+                <div class="col-sm-1 text-end"><button type="button" class="btn btn-outline-danger btn-sm mt-1" onclick="this.closest('.signatory-row').remove()">X</button></div>
+            `;
+            container.appendChild(row);
+        }
+
+        function addSignatory() { addSignatoryRow('', ''); }
+
+        function generateReport(type) {
+            saveSignatories();
+            const sigRows = document.querySelectorAll('.signatory-row');
+            activeSignatories = [];
+            sigRows.forEach(row => {
+                const name = row.querySelector('.sig-name')?.value.trim() || '';
+                const desig = row.querySelector('.sig-designation')?.value.trim() || '';
+                if (name !== '' || desig !== '') {
+                    activeSignatories.push({ name: name || '_________________________', designation: desig || '_________________________' });
+                }
+            });
+
+            if (activeSignatories.length === 0) {
+                document.getElementById('signatory-error').style.display = 'block';
+                return;
+            }
+            document.getElementById('signatory-error').style.display = 'none';
+
+            const sigContainer = type === 'qualifier' 
+                ? document.getElementById('dynamic-signatures-qualifier') 
+                : document.getElementById('dynamic-signatures-participant');
+                
+            sigContainer.innerHTML = ''; 
+            
+            activeSignatories.forEach((sig, index) => {
+                const isLastOdd = (index === activeSignatories.length - 1) && (activeSignatories.length % 2 !== 0);
+                
+                const sigBlock = document.createElement('div');
+                sigBlock.className = isLastOdd ? 'sig-block sig-block-odd' : 'sig-block';
+                sigBlock.innerHTML = `<div class="sig-title">${sig.name}</div><div class="sig-line">${sig.designation}</div>`;
+                sigContainer.appendChild(sigBlock);
+            });
+
+            document.getElementById('setup-section').style.display = 'none';
+            if (type === 'qualifier') {
+                document.getElementById('participant-section').style.display = 'none';
+                document.getElementById('report-section').style.display = 'block';
+            } else {
+                document.getElementById('report-section').style.display = 'none';
+                document.getElementById('participant-section').style.display = 'block';
+            }
+        }
+
+        function backToSetup() {
+            document.getElementById('report-section').style.display = 'none';
+            document.getElementById('participant-section').style.display = 'none';
+            document.getElementById('setup-section').style.display = 'block';
+        }
+
+        async function generateExcel(type) {
+            const isQualifier = type === 'qualifier';
+            const workbook = new ExcelJS.Workbook();
+            
+            const sheetName = isQualifier ? 'Regional Qualifiers' : 'Participant List';
+            const worksheet = workbook.addWorksheet(sheetName, {
+                pageSetup: { paperSize: 14, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 9999 }
+            });
+
+            const lastCol = isQualifier ? 'G' : 'F';
+
+            // Excel Column widths standard for 8.5 x 13 printing
+            if (isQualifier) {
+                worksheet.columns = [{ width: 14 }, { width: 30 }, { width: 35 }, { width: 18 }, { width: 10 }, { width: 12 }, { width: 8 }];
+            } else {
+                worksheet.columns = [{ width: 16 }, { width: 45 }, { width: 25 }, { width: 12 }, { width: 12 }, { width: 8 }];
+            }
+
+            function addCenterText(text, size, bold) {
+                const row = worksheet.addRow([text]);
+                worksheet.mergeCells(`A${row.number}:${lastCol}${row.number}`);
+                const cell = row.getCell(1);
+                cell.alignment = { horizontal: 'center' };
+                cell.font = { size: size, bold: bold };
+            }
+
+            addCenterText('Republic of the Philippines', 9, false);
+            addCenterText('Department of Education', 9, false);
+            addCenterText('Division of Bohol', 9, false);
+            addCenterText('Bohol Provincial Athletic Meet 2026', 11, true);
+            addCenterText('Province of Bohol', 9, false);
+            worksheet.addRow();
+
+            const reportTitle = isQualifier 
+                ? 'HIGHER MEET QUALIFIER 2026' 
+                : 'LIST OF PARTICIPANTS 2026';
+            addCenterText(reportTitle, 13, true);
+            worksheet.addRow();
+
+            const labelRow = worksheet.addRow(['REPORT DATE', '', '', isQualifier ? 'TOTAL QUALIFIERS' : 'TOTAL PARTICIPANTS', '', '']);
+            labelRow.font = { size: 8, bold: true };
+            const valueRow = worksheet.addRow(['@reportTimestamp', '', '', '@(uniqueQualifiersCount) Participants', '', '']);
+            valueRow.font = { size: 10, bold: true };
+            
+            worksheet.mergeCells(`A${labelRow.number}:C${labelRow.number}`);
+            worksheet.mergeCells(`A${valueRow.number}:C${valueRow.number}`);
+            if (isQualifier) {
+                worksheet.mergeCells(`D${labelRow.number}:F${labelRow.number}`);
+                worksheet.mergeCells(`D${valueRow.number}:F${valueRow.number}`);
+            } else {
+                worksheet.mergeCells(`D${labelRow.number}:E${labelRow.number}`);
+                worksheet.mergeCells(`D${valueRow.number}:E${valueRow.number}`);
+            }
+            
+            worksheet.addRow();
+            const subTitleRow = worksheet.addRow([isQualifier ? `QUALIFIED PARTICIPANTS LIST - ${dynamicReportSelectedSportsText}` : `PARTICIPANT LIST - ${dynamicReportSelectedSportsText}`]);
+            subTitleRow.font = { size: 10, bold: true };
+            worksheet.mergeCells(`A${subTitleRow.number}:${lastCol}${subTitleRow.number}`);
+            worksheet.addRow();
+
+            const tableHeaders = isQualifier 
+                ? ['Sports', 'Event Title', 'Participant Name', 'Team', 'Role', 'T-Shirt Sizes', 'Total']
+                : ['Sports', 'Participant Name', 'Team', 'Role', 'T-Shirt Sizes', 'Total'];
+                
+            const headerRow = worksheet.addRow(tableHeaders);
+            headerRow.eachCell((cell, colNumber) => {
+                cell.font = { bold: true };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+                cell.border = { bottom: { style: 'medium' }, top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+                
+                const isCenter = isQualifier ? (colNumber >= 5) : (colNumber >= 4);
+                cell.alignment = { horizontal: isCenter ? 'center' : 'left', vertical: 'middle', wrapText: true };
+            });
+
+            const targetTable = isQualifier ? '#resultsTable tbody tr' : '#participantTable tbody tr';
+            document.querySelectorAll(targetTable).forEach(tr => {
+                const tds = tr.querySelectorAll('td');
+                if (tds.length === 1) { 
+                    const r = worksheet.addRow([tds[0].innerText.trim()]);
+                    worksheet.mergeCells(`A${r.number}:${lastCol}${r.number}`);
+                    const cell = r.getCell(1);
+                    cell.alignment = { horizontal: 'left', vertical: 'middle' };
+                    cell.font = { bold: true, size: 10 };
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE9ECEF' } };
+                    cell.border = { bottom: { style: 'medium', color: { argb: 'FF000000' } }, top: { style: 'medium', color: { argb: 'FF000000' } } };
+                } else if (tds.length === 2 && Number(tds[0].colSpan) > 1) {
+                    const totalColumn = isQualifier ? 7 : 6;
+                    const r = worksheet.addRow([tds[0].innerText.trim()]);
+                    worksheet.mergeCells(r.number, 1, r.number, totalColumn - 1);
+                    r.getCell(totalColumn).value = Number(tds[1].innerText.trim());
+                    r.font = { bold: true };
+                    r.getCell(1).alignment = { horizontal: 'left', wrapText: true };
+                    r.getCell(totalColumn).alignment = { horizontal: 'center' };
+                    r.eachCell(cell => {
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: tds[0].classList.contains('group-header') ? 'FFE9ECEF' : 'FFF5E8C7' } };
+                    });
+                } else {
+                    const rowData = [];
+                    tds.forEach(td => rowData.push(td.innerText.trim()));
+                    const r = worksheet.addRow(rowData);
+                    if (tr.classList.contains('participant-group')) {
+                        r.getCell(isQualifier ? 7 : 6).value = Number(tds[tds.length - 1].innerText.trim());
+                    }
+                    r.eachCell((cell, colNumber) => {
+                        const isCenter = isQualifier ? (colNumber >= 5) : (colNumber >= 4);
+                        cell.alignment = { vertical: 'top', horizontal: isCenter ? 'center' : 'left', wrapText: true };
+                        cell.font = { bold: tr.classList.contains('participant-group') };
+                        if (tr.classList.contains('participant-group')) {
+                            const groupColors = { Boys: 'FFE4EEF9', Girls: 'FFF5E5ED', Mixed: 'FFE5F1E9' };
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: groupColors[tr.dataset.category] } };
+                        }
+                        cell.border = { bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } } };
+                    });
+                }
+            });
+
+            worksheet.addRow();
+            worksheet.addRow();
+
+            addCenterText('SUMMARY', 11, true);
+            const summaryTable = document.getElementById(`${type}-summary`);
+            summaryTable.querySelectorAll('tr').forEach(tr => {
+                const cells = tr.querySelectorAll('th, td');
+                const r = worksheet.addRow([cells[0].innerText.trim()]);
+                const totalColumn = isQualifier ? 7 : 6;
+                worksheet.mergeCells(r.number, 1, r.number, totalColumn - 1);
+                const countText = cells[1].innerText.trim();
+                r.getCell(totalColumn).value = countText === 'Count' ? countText : Number(countText);
+                r.getCell(totalColumn).alignment = { horizontal: 'center' };
+                r.font = { bold: cells[0].tagName === 'TH' || cells[0].innerText.trim() === 'Total' };
+            });
+            worksheet.addRow();
+            const certTitle = worksheet.addRow(['CERTIFICATION']);
+            certTitle.font = { bold: true, size: 10 };
+            
+            const certBody = isQualifier 
+                ? 'This official report lists all confirmed athletes, coaches, and chaperones qualified for the higher meet, verified and recorded through the Provincial Meet Management System.'
+                : 'This official report lists all confirmed qualifiers, coaches, and chaperones verified and recorded through the Provincial Meet Management System.';
+                
+            const certText = worksheet.addRow([certBody]);
+            worksheet.mergeCells(`A${certText.number}:${lastCol}${certText.number}`);
+            certText.getCell(1).alignment = { wrapText: true, horizontal: 'left', vertical: 'top' };
+            certText.getCell(1).font = { bold: false };
+            worksheet.getRow(certText.number).height = 30;
+
+            worksheet.addRow();
+            worksheet.addRow();
+
+            if (activeSignatories.length > 0) {
+                for (let i = 0; i < activeSignatories.length; i += 2) {
+                    const sigRow = worksheet.addRow([]);
+                    const titleRow = worksheet.addRow([]);
+                    
+                    sigRow.getCell(1).value = activeSignatories[i].name;
+                    sigRow.getCell(1).font = { bold: true };
+                    sigRow.getCell(1).alignment = { horizontal: 'center' };
+                    
+                    titleRow.getCell(1).value = activeSignatories[i].designation;
+                    titleRow.getCell(1).alignment = { horizontal: 'center' };
+                    titleRow.getCell(1).font = { bold: false };
+                    
+                    if (i === activeSignatories.length - 1 && activeSignatories.length % 2 !== 0) {
+                        worksheet.mergeCells(`A${sigRow.number}:${lastCol}${sigRow.number}`);
+                        worksheet.mergeCells(`A${titleRow.number}:${lastCol}${titleRow.number}`);
+                    } else {
+                        if (isQualifier) {
+                            worksheet.mergeCells(`A${sigRow.number}:C${sigRow.number}`);
+                            worksheet.mergeCells(`A${titleRow.number}:C${titleRow.number}`);
+                        } else {
+                            worksheet.mergeCells(`A${sigRow.number}:B${sigRow.number}`);
+                            worksheet.mergeCells(`A${titleRow.number}:B${titleRow.number}`);
+                        }
+                    }
+
+                    if (i + 1 < activeSignatories.length) {
+                        const rightIndex = 4;
+                        
+                        sigRow.getCell(rightIndex).value = activeSignatories[i+1].name;
+                        sigRow.getCell(rightIndex).font = { bold: true };
+                        sigRow.getCell(rightIndex).alignment = { horizontal: 'center' };
+                        
+                        titleRow.getCell(rightIndex).value = activeSignatories[i+1].designation;
+                        titleRow.getCell(rightIndex).alignment = { horizontal: 'center' };
+                        titleRow.getCell(rightIndex).font = { bold: false };
+                        
+                        if (isQualifier) {
+                            worksheet.mergeCells(`D${sigRow.number}:F${sigRow.number}`);
+                            worksheet.mergeCells(`D${titleRow.number}:F${titleRow.number}`);
+                        } else {
+                            worksheet.mergeCells(`D${sigRow.number}:E${sigRow.number}`);
+                            worksheet.mergeCells(`D${titleRow.number}:E${titleRow.number}`);
+                        }
+                    }
+                    
+                    worksheet.addRow();
+                    worksheet.addRow();
+                }
+            }
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            const fileName = isQualifier ? 'Provincial_Qualifier_Report.xlsx' : 'Provincial_Participant_List.xlsx';
+            saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), fileName);
+        }
+    </script>
+}

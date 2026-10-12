@@ -1,0 +1,773 @@
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using Microsoft.EntityFrameworkCore
+@inject ProvMeet.Data.ApplicationDbContext DbContext
+@model IEnumerable<ProvMeet.Models.Event>
+@{
+    ViewData["Title"] = "Pending Events Report";
+    var reportTimestamp = DateTime.UtcNow.AddHours(8).ToString("MMMM dd, yyyy h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
+
+    var eventSports = DbContext.Events.AsNoTracking().Select(e => new { e.Id, e.SportName }).ToDictionary(e => e.Id, e => e.SportName ?? "");
+
+    var selectedSports = Context.Request.Query["sportsName"].ToList();
+    var selectedEvents = Context.Request.Query["eventId"].ToList();
+    var selectedDivisions = Context.Request.Query["division"].ToList();
+
+    var pendingEvents = Model?.ToList() ?? new List<ProvMeet.Models.Event>();
+
+    string GetEventDivision(ProvMeet.Models.Event evt) {
+        if (!string.IsNullOrEmpty(evt.Division)) return evt.Division.ToUpper();
+        if (evt.Title != null) {
+            if (evt.Title.IndexOf("ELEM", StringComparison.OrdinalIgnoreCase) >= 0) return "ELEMENTARY";
+            if (evt.Title.IndexOf("SEC", StringComparison.OrdinalIgnoreCase) >= 0) return "SECONDARY";
+        }
+        return "GENERAL";
+    }
+
+    int GetDivisionOrder(string div) {
+        if (div.Contains("ELEM")) return 1;
+        if (div.Contains("SEC")) return 2;
+        if (div.Contains("PARA")) return 3;
+        return 4;
+    }
+
+    int GetCategoryOrder(string? category) {
+        return category?.Trim().ToUpperInvariant() switch {
+            "BOYS" => 1,
+            "GIRLS" => 2,
+            "MIXED" => 3,
+            _ => 4
+        };
+    }
+
+    // Hierarchical Grouping: Division -> Sports -> Events
+    var groupedDivisionEvents = pendingEvents
+        .GroupBy(evt => GetEventDivision(evt))
+        .OrderBy(g => GetDivisionOrder(g.Key))
+        .ThenBy(g => g.Key)
+        .Select(divGroup => new {
+            Division = divGroup.Key,
+            TotalPending = divGroup.Count(),
+            Sports = divGroup
+                .GroupBy(evt => string.IsNullOrWhiteSpace(evt.SportName) ? "Unassigned Sport" : evt.SportName.Trim())
+                .OrderBy(sg => sg.Key)
+                .Select(sportGroup => new {
+                    Sport = sportGroup.Key,
+                    TotalPending = sportGroup.Count(),
+                    Categories = sportGroup
+                        .GroupBy(e => string.IsNullOrWhiteSpace(e.EventCategory) ? "Uncategorized" : e.EventCategory.Trim())
+                        .OrderBy(cg => GetCategoryOrder(cg.Key))
+                        .ThenBy(cg => cg.Key)
+                        .Select(categoryGroup => new {
+                            Category = categoryGroup.Key,
+                            Events = categoryGroup.OrderBy(e => e.Title).ToList()
+                        })
+                        .ToList()
+                })
+                .ToList()
+        })
+        .ToList();
+}
+
+<!-- Include Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<style>
+    .report-wrapper {
+        background-color: #ffffff; 
+        color: #000000; 
+        font-family: Arial, Helvetica, sans-serif;
+        max-width: 950px;
+        margin: 0 auto;
+        padding: 40px 50px;
+        border-radius: 8px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .report-header-text { font-size: 0.9rem; margin-bottom: 3px; font-weight: 600; color: #000000; }
+    .report-divider { border-top: 2px solid #000000; margin: 15px 0; width: 100%; }
+    .report-title { font-size: 1.4rem; font-weight: 800; letter-spacing: 0.5px; color: #000000; }
+    
+    .meta-col { border-right: 1px solid #000000; }
+    .meta-col:last-child { border-right: none; }
+    .meta-label { font-size: 0.65rem; color: #000000; margin-bottom: 2px; font-weight: 700; letter-spacing: 0.5px; }
+    .meta-value { font-size: 0.85rem; font-weight: bold; color: #000000; }
+    
+    .table-report { width: 100%; border-collapse: collapse; margin-bottom: 20px; background-color: #ffffff; border-radius: 0; overflow: hidden; border: 1px solid #000000; }
+    .table-report th { padding: 9px 12px; font-size: 0.85rem; font-weight: bold; border-bottom: 2px solid #000000; color: #000000; background-color: #f2f2f2; }
+    .table-report td { padding: 9px 12px; font-size: 0.85rem; border-bottom: 1px solid #cccccc; vertical-align: middle; color: #000000; }
+    .table-report { table-layout: fixed; }
+    .table-report th, .table-report td { overflow-wrap: anywhere; }
+    .table-report td.pending-event-title { padding-left: 28px; }
+    .category-header { padding: 5px 12px 4px 28px !important; color: #000000 !important; background: #ffffff !important; font-size: 0.82rem !important; font-weight: 600 !important; text-transform: uppercase; border-bottom: 0 !important; }
+    .table-report tr.pending-event-row td {
+        padding-top: 4px;
+        padding-bottom: 4px;
+        line-height: 1.25;
+    }
+    .pending-event-number { position: relative; left: 6px; }
+    .pending-group-label { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.25rem 1rem; }
+    .pending-group-total { font-size: 0.8rem; font-weight: 700; white-space: nowrap; margin-left: auto; letter-spacing: 0; }
+    @@media (max-width: 575.98px) {
+        .report-wrapper { padding: 20px 12px; }
+        .table-report th, .table-report td { padding: 7px 8px; }
+        .sport-header { padding-left: 16px !important; }
+    }
+    
+    .group-header { 
+        background-color: #e9ecef !important; 
+        color: #000000 !important; 
+        font-weight: 800 !important; 
+        text-align: left !important; 
+        font-size: 0.95rem !important; 
+        border-top: 2px solid #000000 !important; 
+        border-bottom: 2px solid #000000 !important; 
+        padding: 8px 14px !important;
+        letter-spacing: 0.5px;
+    }
+
+    .sport-header { 
+        background-color: #f8f9fa !important; 
+        color: #000000 !important; 
+        font-weight: 800 !important; 
+        text-align: left !important; 
+        font-size: 0.88rem !important; 
+        border-top: 1px solid #000000 !important; 
+        border-bottom: 1px solid #dddddd !important; 
+        padding: 6px 14px 6px 26px !important;
+    }
+
+    .cert-text { font-size: 0.85rem; line-height: 1.5; color: #000000; margin-bottom: 25px; text-align: justify; font-weight: normal; }
+    
+    .sig-block { text-align: center; margin-top: 40px; } 
+    .sig-title { font-size: 0.85rem; font-weight: bold; margin-bottom: 0px; text-transform: uppercase; color: #000000; display: inline-block; min-width: 200px; border-bottom: 1px solid #000000; padding-bottom: 2px; }
+    .sig-line { font-size: 0.75rem; color: #000000; margin-top: 2px; font-weight: normal; }
+
+    .setup-card {
+        background-color: #ffffff;
+        border: 1px solid rgba(183, 121, 31, 0.2);
+        border-top: 4px solid #b7791f;
+        max-width: 1200px;
+        margin: 0 auto 20px auto;
+        border-radius: 12px;
+        box-shadow: 0 8px 25px rgba(183, 121, 31, 0.08);
+    }
+
+    .select2-container--default .select2-selection--multiple {
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        min-height: 38px;
+    }
+
+    @@page {
+        size: A4 portrait;
+        margin: 0.5in; 
+    }
+
+    @@media print {
+        header, footer, nav, .d-print-none, #setup-section { 
+            display: none !important; 
+        }
+
+        body, html {
+            background-color: #ffffff !important;
+            background-image: none !important;
+            margin: 0 !important; 
+            padding: 0 !important;
+            color: #000000 !important;
+        }
+
+        .container {
+            max-width: 100% !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .report-wrapper {
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            background-color: transparent !important;
+        }
+
+        #report-section {
+            display: block !important;
+        }
+
+        .table-report {
+            border: 1px solid #000000 !important;
+            page-break-inside: auto;
+        }
+
+        .table-report tr {
+            page-break-inside: avoid !important;
+            page-break-after: auto;
+        }
+
+        .table-report th {
+            background-color: #f2f2f2 !important;
+            color: #000000 !important;
+            border-bottom: 2px solid #000000 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .table-report td {
+            color: #000000 !important;
+            border-bottom: 1px solid #cccccc !important;
+        }
+
+        .group-header {
+            background-color: #e9ecef !important;
+            color: #000000 !important;
+            border-top: 2px solid #000000 !important;
+            border-bottom: 2px solid #000000 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .sport-header {
+            background-color: #f8f9fa !important;
+            color: #000000 !important;
+            border-top: 1px solid #000000 !important;
+            border-bottom: 1px solid #dddddd !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        
+        .sig-block { display: inline-block; width: 48%; vertical-align: top; page-break-inside: avoid !important; margin-top: 30px; }
+        .sig-title { color: #000000 !important; border-bottom: 1px solid #000000 !important; }
+        .sig-line { color: #000000 !important; }
+    }
+</style>
+
+<div class="container py-4">
+
+    <!-- STEP 1: CONFIGURATION SETUP -->
+    <div id="setup-section" class="card setup-card p-4 mb-4 d-print-none">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 border-bottom pb-2">
+            <h4 class="fw-bold mb-0" style="color: #b7791f;">
+                <i class="bi bi-clock-history me-2"></i>Configure Pending Events Report
+            </h4>
+            <div>
+                <a asp-action="AllEventsResultsReport" class="btn btn-sm btn-outline-primary fw-bold shadow-sm">
+                    &larr; Finalized Results Report
+                </a>
+            </div>
+        </div>
+        
+        <div class="mb-4 bg-light p-3 rounded border">
+            <label class="form-label fw-bold mb-3" style="color: #b7791f;">Filter Pending Events</label>
+            <form method="get" asp-action="PendingEventsReport" id="filterForm">
+                <div class="row g-3 align-items-end">
+                    
+                    <!-- 1. Sports Filter -->
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold mb-1">Filter by Sports</label>
+                        <select name="sportsName" id="sportsFilter" class="form-select select2-multi" multiple="multiple" data-placeholder="-- All Sports --">
+                            @if (ViewBag.SportsList != null)
+                            {
+                                foreach (var sport in ViewBag.SportsList)
+                                {
+                                    if (selectedSports.Contains(sport.Value)) { <option value="@sport.Value" selected>@sport.Text</option> }
+                                    else { <option value="@sport.Value">@sport.Text</option> }
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <!-- 2. Searchable Event Filter -->
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold mb-1">Filter by Event</label>
+                        <select name="eventId" id="eventFilter" class="form-select select2-multi cascading-event" multiple="multiple" data-placeholder="-- All Events --">
+                            @if (ViewBag.EventsList != null)
+                            {
+                                foreach (var evt in ViewBag.EventsList)
+                                {
+                                    string sportData = "";
+                                    if (int.TryParse(evt.Value, out int parsedId))
+                                    {
+                                        eventSports.TryGetValue(parsedId, out string? sd);
+                                        sportData = sd ?? "";
+                                    }
+
+                                    if (selectedEvents.Contains(evt.Value)) 
+                                    { 
+                                        <option value="@evt.Value" data-sport="@sportData" selected>@evt.Text</option> 
+                                    }
+                                    else 
+                                    { 
+                                        <option value="@evt.Value" data-sport="@sportData">@evt.Text</option> 
+                                    }
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <!-- 3. Division Filter -->
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold mb-1">Filter by Division</label>
+                        <select name="division" id="divisionFilter" class="form-select select2-multi" multiple="multiple" data-placeholder="-- All Divisions --">
+                            @if (ViewBag.DivisionsList != null)
+                            {
+                                foreach (var div in ViewBag.DivisionsList)
+                                {
+                                    if (selectedDivisions.Contains(div.Value)) { <option value="@div.Value" selected>@div.Text</option> }
+                                    else { <option value="@div.Value">@div.Text</option> }
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-md-12 text-end mt-3">
+                        <a asp-action="PendingEventsReport" class="btn btn-outline-secondary btn-sm px-3 fw-bold me-2">Reset Filters</a>
+                        <button type="submit" class="btn text-white shadow-sm px-4 fw-bold" style="background-color: #b7791f;" onclick="saveSignatories();">Apply Filters</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Signatories Configuration -->
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label fw-bold mb-0" style="color: #b7791f;">Signatories</label>
+                <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="addSignatory()">
+                    <i class="bi bi-plus-lg me-1"></i> Add Signatory
+                </button>
+            </div>
+
+            <div id="signatory-error" class="alert alert-danger py-2 px-3 mb-3 fw-bold d-flex align-items-center" style="display: none;" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> Please enter at least one signatory.
+            </div>
+            
+            <div id="signatories-container">
+                <div class="row mb-2 signatory-row">
+                    <div class="col-sm-5"><input type="text" class="form-control setup-input sig-name" placeholder="Name" value="MARIO L. GARCIA, PhD" /></div>
+                    <div class="col-sm-6"><input type="text" class="form-control setup-input sig-designation" placeholder="Designation" value="Chief Recorder" /></div>
+                    <div class="col-sm-1 text-end"><button type="button" class="btn btn-outline-danger btn-sm mt-1" title="Remove" onclick="this.closest('.signatory-row').remove()">X</button></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-2">
+            <a asp-action="Index" class="btn btn-outline-secondary px-4 fw-bold">Cancel</a>
+            <button type="button" class="btn text-white px-4 fw-bold" style="background-color: #b7791f;" onclick="generateReport()">
+                Generate Report Preview
+            </button>
+        </div>
+    </div>
+
+    <!-- STEP 2: REPORT PREVIEW / PRINT AREA -->
+    <div id="report-section" style="display: none;">
+        
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center mb-4 mx-auto gap-3 d-print-none" style="max-width: 950px;">
+            <button onclick="backToSetup()" class="btn btn-outline-secondary btn-sm fw-bold align-self-start align-self-sm-center">
+                <i class="bi bi-arrow-left me-1"></i> Back to Configuration
+            </button>
+            <div class="d-flex gap-2">
+                <button onclick="window.print()" class="btn text-white shadow px-4 fw-bold" style="background-color: #b7791f;">
+                    <i class="bi bi-printer"></i> Print / Save PDF
+                </button>
+                <button onclick="generateExcel()" class="btn btn-success shadow px-4 fw-bold">
+                    <i class="bi bi-file-earmark-excel"></i> Export Excel
+                </button>
+            </div>
+        </div>
+
+        <div id="pdf-content" class="report-wrapper">
+            <div>
+                <div class="text-center">
+                    <div class="report-header-text">Republic of the Philippines</div>
+                    <div class="report-header-text">Department of Education</div>
+                    <div class="report-header-text">Division of Bohol</div>
+                    <div class="report-header-text fs-5 mt-2 mb-1 fw-bold">Bohol Provincial Athletic Meet 2026</div>
+                    <div class="report-header-text fs-6 fw-bold text-uppercase" id="report-division-text"></div>
+                </div>
+
+                <div class="report-divider"></div>
+
+                <div class="text-center mb-3">
+                    <div class="report-title mb-1">PENDING EVENTS REPORT</div>
+                    <div class="text-muted small fw-bold">Events Awaiting Results Finalization</div>
+                </div>
+
+                <div class="report-divider"></div>
+
+                <div class="row text-center py-1">
+                    <div class="col-6 meta-col">
+                        <div class="meta-label">REPORT DATE</div>
+                        <div class="meta-value">@reportTimestamp</div>
+                    </div>
+                    <div class="col-6 meta-col">
+                        <div class="meta-label">TOTAL PENDING EVENTS</div>
+                        <div class="meta-value">@(pendingEvents.Count()) Events</div>
+                    </div>
+                </div>
+
+                <div class="report-divider"></div>
+
+                <h5 class="fw-bold mb-3" style="font-size: 1.05rem; letter-spacing: 0.5px; color: #000000;">SCHEDULED PENDING EVENTS</h5>
+                <table class="table-report" id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 10%; text-align: center;">#</th>
+                            <th style="width: 90%; text-align: left;">Event Title</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!groupedDivisionEvents.Any() || !pendingEvents.Any())
+                        {
+                            <tr>
+                                <td colspan="2" class="text-center py-4 text-muted">
+                                    No pending events found for the current filters.
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var divGroup in groupedDivisionEvents)
+                            {
+                                <tr>
+                                    <td colspan="2" class="group-header">
+                                        <div class="pending-group-label">
+                                            <span>@divGroup.Division DIVISION</span>
+                                            <span class="pending-group-total">Total Pending: @divGroup.TotalPending</span>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                @foreach (var sportGroup in divGroup.Sports)
+                                {
+                                    <tr>
+                                        <td colspan="2" class="sport-header">
+                                            <div class="pending-group-label">
+                                                <span>@sportGroup.Sport</span>
+                                                <span class="pending-group-total">Total Pending: @sportGroup.TotalPending</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+
+                                    @foreach (var categoryGroup in sportGroup.Categories)
+                                    {
+                                        <tr>
+                                            <td style="width: 10%;"></td>
+                                            <td class="category-header" style="width: 90%;">@categoryGroup.Category</td>
+                                        </tr>
+                                        int itemNo = 1;
+                                        @foreach (var evt in categoryGroup.Events)
+                                        {
+                                            <tr class="pending-event-row">
+                                                <td class="text-center" style="width: 10%;"><span class="pending-event-number">@itemNo</span></td>
+                                                <td class="text-start pending-event-title" style="width: 90%;">
+                                                    <span class="fw-bold text-black">@evt.Title</span>
+                                                </td>
+                                            </tr>
+                                            itemNo++;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    </tbody>
+                </table>
+
+                <h5 class="fw-bold mb-2 mt-4" style="font-size: 1.05rem; letter-spacing: 0.5px; color: #000000;">CERTIFICATION</h5>
+                <p class="cert-text">
+                    This report is generated from the official Bohol Provincial Athletic Meet 2026 Management System and reflects the
+                    uncompleted and pending event records awaiting score input and finalization as of the time of generation.
+                </p>
+
+                <div class="report-divider" style="margin-bottom: 25px;"></div>
+
+                <div class="row justify-content-center" id="dynamic-signatures"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    
+    <script>
+        let activeSignatories = [];
+
+        $(document).ready(function() {
+            loadSignatories();
+
+            $('.select2-multi').select2({
+                placeholder: function() {
+                    return $(this).attr('data-placeholder') || '-- All --';
+                },
+                allowClear: true,
+                width: '100%',
+                multiple: true,
+                closeOnSelect: false
+            });
+
+            $('select[name="sportsName"]').on('change', function() {
+                var selectedSports = $(this).val() || [];
+                var $eventSelect = $('select[name="eventId"]');
+                
+                $eventSelect.find('option').each(function() {
+                    var sport = $(this).attr('data-sport');
+                    if (!sport || selectedSports.length === 0 || selectedSports.includes(sport)) {
+                        $(this).prop('disabled', false);
+                    } else {
+                        $(this).prop('disabled', true);
+                    }
+                });
+                $eventSelect.trigger('change.select2');
+            });
+        });
+
+        function saveSignatories() {
+            const sigRows = document.querySelectorAll('.signatory-row');
+            const dataToSave = [];
+            
+            sigRows.forEach(row => {
+                const name = row.querySelector('.sig-name')?.value || '';
+                const designation = row.querySelector('.sig-designation')?.value || '';
+                if (name.trim() !== '' || designation.trim() !== '') {
+                    dataToSave.push({ name: name, designation: designation });
+                }
+            });
+            
+            sessionStorage.setItem('prov_pending_signatories', JSON.stringify(dataToSave));
+        }
+
+        function loadSignatories() {
+            const stored = sessionStorage.getItem('prov_pending_signatories');
+            const container = document.getElementById('signatories-container');
+            if (stored) {
+                try {
+                    const parsedData = JSON.parse(stored);
+                    if (parsedData && parsedData.length > 0) {
+                        container.innerHTML = '';
+                        parsedData.forEach(sig => addSignatoryRow(sig.name, sig.designation));
+                        return;
+                    }
+                } catch(e) {}
+            }
+            if (container.children.length === 0) {
+                addSignatoryRow('MARIO L. GARCIA, PhD', 'Chief Recorder');
+            }
+        }
+
+        function addSignatoryRow(nameVal = '', desigVal = '') {
+            const container = document.getElementById('signatories-container');
+            const row = document.createElement('div');
+            row.className = 'row mb-2 signatory-row';
+            row.innerHTML = `
+                <div class="col-sm-5"><input type="text" class="form-control setup-input sig-name" placeholder="Name" value="${nameVal}" /></div>
+                <div class="col-sm-6"><input type="text" class="form-control setup-input sig-designation" placeholder="Designation" value="${desigVal}" /></div>
+                <div class="col-sm-1 text-end"><button type="button" class="btn btn-outline-danger btn-sm mt-1" title="Remove" onclick="this.closest('.signatory-row').remove()">X</button></div>
+            `;
+            container.appendChild(row);
+        }
+
+        function addSignatory() {
+            addSignatoryRow('', '');
+        }
+
+        function generateReport() {
+            saveSignatories();
+            
+            const sigRows = document.querySelectorAll('.signatory-row');
+            activeSignatories = [];
+            const sigError = document.getElementById('signatory-error');
+
+            sigRows.forEach(row => {
+                const name = row.querySelector('.sig-name')?.value.trim() || '';
+                const designation = row.querySelector('.sig-designation')?.value.trim() || '';
+                
+                if (name !== '' || designation !== '') {
+                    activeSignatories.push({
+                        name: name || '_________________________',
+                        designation: designation || '_________________________'
+                    });
+                }
+            });
+
+            if (activeSignatories.length === 0) {
+                if (sigError) sigError.style.display = 'flex';
+                const firstInput = document.querySelector('.sig-name');
+                if (firstInput) firstInput.focus();
+                return;
+            }
+
+            if (sigError) sigError.style.display = 'none';
+
+            var divisionSelect = document.getElementById('divisionFilter');
+            var selectedDivText = Array.from(divisionSelect.options)
+                                       .filter(option => option.selected)
+                                       .map(option => option.text);
+            
+            let finalDivTitle = "GENERAL / OVER-ALL";
+            if(selectedDivText.length > 0) {
+                finalDivTitle = selectedDivText.join(" & ").toUpperCase() + " DIVISION";
+            }
+            
+            document.getElementById('report-division-text').innerText = finalDivTitle;
+
+            const sigContainer = document.getElementById('dynamic-signatures');
+            sigContainer.innerHTML = ''; 
+
+            activeSignatories.forEach(sig => {
+                const colClass = activeSignatories.length <= 2 ? 'col-6' : 'col-md-4 col-sm-6'; 
+                const sigBlock = document.createElement('div');
+                sigBlock.className = `${colClass} sig-block text-center`;
+                sigBlock.innerHTML = `<div class="sig-title">${sig.name}</div><div class="sig-line">${sig.designation}</div>`;
+                sigContainer.appendChild(sigBlock);
+            });
+
+            document.getElementById('setup-section').style.display = 'none';
+            document.getElementById('report-section').style.display = 'block';
+        }
+
+        function backToSetup() {
+            document.getElementById('report-section').style.display = 'none';
+            document.getElementById('setup-section').style.display = 'block';
+        }
+
+        async function generateExcel() {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Pending Events', {
+                pageSetup: {
+                    paperSize: 9, // A4
+                    orientation: 'portrait',
+                    fitToPage: true,
+                    fitToWidth: 1,
+                    fitToHeight: 9999,
+                    margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 }
+                }
+            });
+
+            const lastCol = 'B';
+            worksheet.columns = [
+                { width: 10 }, { width: 65 }
+            ];
+
+            function addCenterText(text, size, bold) {
+                const row = worksheet.addRow([text]);
+                worksheet.mergeCells(`A${row.number}:${lastCol}${row.number}`);
+                const cell = row.getCell(1);
+                cell.alignment = { horizontal: 'center' };
+                cell.font = { size: size, bold: bold };
+            }
+
+            addCenterText('Republic of the Philippines', 9, false);
+            addCenterText('Department of Education', 9, false);
+            addCenterText('Division of Bohol', 9, false);
+            addCenterText('Bohol Provincial Athletic Meet 2026', 12, true);
+            const divText = document.getElementById('report-division-text').innerText;
+            if(divText) addCenterText(divText, 11, true);
+            worksheet.addRow([]); 
+
+            addCenterText('PENDING EVENTS REPORT', 14, true);
+            addCenterText('School Year 2026–2027', 11, true);
+            worksheet.addRow([]); 
+
+            const metaLabels = ['REPORT DATE', 'TOTAL PENDING EVENTS'];
+            const metaValues = [
+                '@reportTimestamp',
+                '@(pendingEvents.Count()) Events'
+            ];
+            
+            const labelRow = worksheet.addRow(metaLabels);
+            labelRow.font = { size: 8, bold: true };
+            const valueRow = worksheet.addRow(metaValues);
+            valueRow.font = { size: 10, bold: true };
+            worksheet.addRow([]);
+
+            const headerRow = worksheet.addRow(['#', 'Event Title']);
+            headerRow.eachCell(cell => {
+                cell.font = { bold: true };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+                cell.border = { bottom: { style: 'medium' }, top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            });
+
+            const tbodyRows = document.querySelectorAll('#resultsTable tbody tr');
+            tbodyRows.forEach(tr => {
+                const tds = tr.querySelectorAll('td');
+                
+                if (tds.length === 1) { 
+                    const r = worksheet.addRow([tds[0].innerText.trim()]);
+                    worksheet.mergeCells(`A${r.number}:${lastCol}${r.number}`);
+                    const cell = r.getCell(1);
+                    cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+                    cell.font = { bold: true, size: tds[0].classList.contains('group-header') ? 11 : 10 };
+                    cell.fill = { 
+                        type: 'pattern', 
+                        pattern: 'solid', 
+                        fgColor: { argb: tds[0].classList.contains('group-header') ? 'FFE9ECEF' : 'FFF8F9FA' } 
+                    };
+                    cell.border = { bottom: { style: 'medium', color: { argb: 'FF000000' } }, top: { style: 'thin', color: { argb: 'FF000000' } } };
+                } else if (tds.length === 2) {
+                    const noVal = tds[0].innerText.trim();
+                    const titleVal = tds[1].innerText.trim();
+                    
+                    const r = worksheet.addRow([noVal, titleVal]);
+                    r.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+                    r.getCell(2).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true, indent: 1 };
+                    r.getCell(2).font = { bold: false };
+                    r.eachCell(cell => {
+                        cell.border = { bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } } };
+                    });
+                }
+            });
+
+            worksheet.addRow([]);
+            worksheet.addRow([]);
+
+            const certTitle = worksheet.addRow(['CERTIFICATION']);
+            certTitle.font = { bold: true, size: 11 };
+            
+            const certText = worksheet.addRow(['This report is generated from the official Bohol Provincial Athletic Meet 2026 Management System and reflects the uncompleted and pending event records awaiting score input and finalization as of the time of generation.']);
+            worksheet.mergeCells(`A${certText.number}:${lastCol}${certText.number}`);
+            certText.getCell(1).alignment = { wrapText: true, horizontal: 'left' };
+            certText.getCell(1).font = { bold: false };
+            worksheet.getRow(certText.number).height = 30; 
+
+            worksheet.addRow([]);
+            worksheet.addRow([]);
+
+            if (activeSignatories.length > 0) {
+                for (let i = 0; i < activeSignatories.length; i += 2) {
+                    const sigRow = worksheet.addRow([]);
+                    const titleRow = worksheet.addRow([]);
+                    
+                    sigRow.getCell(1).value = activeSignatories[i].name;
+                    sigRow.getCell(1).font = { bold: true };
+                    sigRow.getCell(1).alignment = { horizontal: 'center' };
+                    titleRow.getCell(1).value = activeSignatories[i].designation;
+                    titleRow.getCell(1).alignment = { horizontal: 'center' };
+                    titleRow.getCell(1).font = { bold: false };
+
+                    if (i + 1 < activeSignatories.length) {
+                        sigRow.getCell(2).value = activeSignatories[i+1].name;
+                        sigRow.getCell(2).font = { bold: true };
+                        sigRow.getCell(2).alignment = { horizontal: 'center' };
+                        titleRow.getCell(2).value = activeSignatories[i+1].designation;
+                        titleRow.getCell(2).alignment = { horizontal: 'center' };
+                        titleRow.getCell(2).font = { bold: false };
+                    }
+                    
+                    worksheet.addRow([]);
+                    worksheet.addRow([]);
+                }
+            }
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            saveAs(blob, 'Bohol_Provincial_Meet_Pending_Events.xlsx');
+        }
+    </script>
+}

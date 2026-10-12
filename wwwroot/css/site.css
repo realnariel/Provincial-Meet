@@ -1,0 +1,301 @@
+/* ==========================================================================
+   1. BASE SYSTEM & FONTS
+   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap');
+
+:root {
+    --bs-primary: #123F2D;
+    --bs-primary-rgb: 18, 63, 45;
+    --bs-link-color: #285735;
+    --bs-link-hover-color: #123F2D;
+    /* Color Hierarchy */
+    --deped-blue: #123F2D;    /* 30% - Headers, Nav, Primary Structures */
+    --bg-light: #F8F9FA;      /* 60% - Backgrounds */
+    --crimson-red: #397447;   /* 10% - Action items, Live, Buttons */
+    --golden-yellow: #C8A354; /* Accents, Medals, #1 Leader */
+    --text-main: #212529;
+    --text-muted: #6C757D;
+    
+    /* Typography Structure */
+    --font-header: 'Montserrat', sans-serif;
+    --font-body: 'Inter', sans-serif;
+}
+
+html {
+    font-size: 14px;
+    overflow-y: scroll; /* Forces vertical scrollbar to always stay visible */
+    position: relative;
+    min-height: 100%;
+    background-color: var(--bg-light); /* Fallback background applied to html */
+}
+
+@media (min-width: 768px) {
+    html {
+        font-size: 16px;
+    }
+}
+
+body {
+    margin-bottom: 60px;
+    background-color: transparent; /* Changed from #ffffff to let the image show through */
+    font-family: var(--font-body);
+    color: var(--text-main);
+    position: relative;
+    min-height: 100vh;
+    overflow-x: hidden;
+    isolation: isolate; /* Creates a stacking context so z-index: -1 stays above html background */
+}
+
+/* Shared ProvMeet canvas: soft green, gold, and subtle athletic track lines. */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1; /* Keeps it safely behind your dashboard content */
+    
+    background-color: #f5f7f0;
+    background-image:
+        radial-gradient(ellipse at 0% 10%, rgba(57, 116, 71, 0.13), transparent 55%),
+        radial-gradient(ellipse at 100% 85%, rgba(200, 163, 84, 0.14), transparent 50%),
+        repeating-linear-gradient(135deg, transparent 0 105px, rgba(18, 63, 45, 0.035) 105px 107px, transparent 107px 119px, rgba(200, 163, 84, 0.07) 119px 121px, transparent 121px 240px);
+    
+    pointer-events: none; 
+}
+
+/* Keep printed reports on a plain white page. */
+@media print {
+    body::before { display: none !important; }
+}
+
+/* Ensures your website data cards sit crisply over the art layer */
+.container, main, .dashboard-card {
+    position: relative;
+    z-index: 1;
+}
+
+/* ==========================================================================
+   2. TYPOGRAPHY
+   ========================================================================== */
+h1, h2, h3, h4, h5, h6, .page-title, .rank-number {
+    font-family: var(--font-header);
+    font-weight: 900;
+    text-transform: uppercase;
+    color: var(--deped-blue);
+    margin-bottom: 1rem;
+}
+
+.rank-number {
+    font-size: 2.5rem;
+    color: var(--text-main);
+}
+
+/* ==========================================================================
+   3. SHAPE LANGUAGE: BUTTONS & INTERACTIVE ELEMENTS
+   ========================================================================== */
+.btn-athletic {
+    background-color: var(--crimson-red);
+    color: white;
+    font-family: var(--font-header);
+    font-weight: 800;
+    letter-spacing: 1px;
+    border: none;
+    padding: 10px 28px;
+    transform: skewX(-10deg);
+    transition: all 0.3s ease;
+    display: inline-block;
+    text-decoration: none;
+    text-transform: uppercase;
+}
+
+.btn-athletic > span {
+    display: inline-block;
+    transform: skewX(10deg); /* Un-skews the text inside */
+}
+
+.btn-athletic:hover, .btn-athletic:focus {
+    background-color: var(--deped-blue);
+    color: var(--golden-yellow);
+    transform: skewX(-10deg) translateY(-2px);
+    box-shadow: 4px 4px 0px rgba(0,0,0,0.1);
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem var(--deped-blue);
+}
+
+/* ==========================================================================
+   4. MODULAR CONTENT & GLASSMORPHISM
+   ========================================================================== */
+.glass-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+    border-radius: 8px; /* Clean edges */
+    padding: 1.5rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glass-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.08);
+}
+
+.match-card {
+    background: white;
+    border-radius: 6px;
+    padding: 1rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+    border-left: 5px solid var(--deped-blue);
+    margin-bottom: 1rem;
+}
+
+/* ==========================================================================
+   5. STATUS INDICATORS (LIVE, COMPLETED)
+   ========================================================================== */
+.status-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.status-live {
+    background-color: var(--crimson-red);
+    box-shadow: 0 0 0 rgba(220, 20, 60, 0.7);
+    animation: pulse 1.5s infinite;
+}
+
+.status-completed {
+    background-color: var(--text-muted);
+}
+
+.status-upcoming {
+    background-color: var(--deped-blue);
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(220, 20, 60, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(220, 20, 60, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(220, 20, 60, 0);
+    }
+}
+
+/* ==========================================================================
+   6. TABLES (RANKINGS & MEDAL TALLY)
+   ========================================================================== */
+.minimalist-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.minimalist-table th {
+    background-color: white;
+    font-family: var(--font-header);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    padding: 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 2px solid var(--bg-light);
+}
+
+.minimalist-table td {
+    padding: 1rem;
+    vertical-align: middle;
+    font-weight: 500;
+}
+
+.minimalist-table tbody tr:nth-child(even) {
+    background-color: var(--bg-light);
+}
+
+.minimalist-table tbody tr:nth-child(odd) {
+    background-color: white;
+}
+
+/* The Leader Treatment */
+.minimalist-table tbody tr.leader-row {
+    background-color: rgba(255, 215, 0, 0.1);
+    border-left: 5px solid var(--golden-yellow);
+}
+
+.minimalist-table tbody tr.leader-row .rank-number {
+    color: var(--deped-blue);
+}
+
+/* ==========================================================================
+   7. FORM OVERRIDES
+   ========================================================================== */
+.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
+    color: var(--text-muted);
+    text-align: end;
+}
+
+.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
+    text-align: start;
+}
+
+/* ==========================================================================
+   8. RESPONSIVE LAYOUTS & TABLE UTILITIES
+   ========================================================================== */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+}
+
+@media (max-width: 767px) {
+    .glass-card {
+        padding: 1rem;
+    }
+    
+    .rank-number {
+        font-size: 2rem;
+    }
+    
+    .minimalist-table th, 
+    .minimalist-table td {
+        padding: 0.75rem;
+        font-size: 0.9rem;
+    }
+    
+    .btn-athletic {
+        padding: 8px 20px;
+        font-size: 0.9rem;
+    }
+}
+
+.btn-primary {
+    --bs-btn-bg: #123F2D;
+    --bs-btn-border-color: #123F2D;
+    --bs-btn-hover-bg: #285735;
+    --bs-btn-hover-border-color: #285735;
+    --bs-btn-active-bg: #092D20;
+    --bs-btn-active-border-color: #092D20;
+    --bs-btn-disabled-bg: #397447;
+    --bs-btn-disabled-border-color: #397447;
+    --bs-btn-focus-shadow-rgb: 57, 116, 71;
+}
+.btn-outline-primary {
+    --bs-btn-color: #123F2D;
+    --bs-btn-border-color: #123F2D;
+    --bs-btn-hover-bg: #123F2D;
+    --bs-btn-hover-border-color: #123F2D;
+    --bs-btn-active-bg: #092D20;
+    --bs-btn-active-border-color: #092D20;
+    --bs-btn-focus-shadow-rgb: 57, 116, 71;
+}

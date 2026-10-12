@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "project": {
+    "name": "Provincial Meet",
+    "productType": null,
+    "stack": []
+  },
+  "sources": {
+    "tokens": [],
+    "components": [],
+    "assets": [],
+    "instructions": []
+  },
+  "design": {
+    "colorMode": "unknown",
+    "colors": {},
+    "typography": {},
+    "spacing": {},
+    "radius": {},
+    "shadows": {},
+    "motion": {},
+    "density": "unknown"
+  },
+  "components": {
+    "installed": [],
+    "preferredPrimitives": [],
+    "patterns": []
+  },
+  "constraints": {
+    "must": [],
+    "avoid": []
+  },
+  "decisions": [
+    "Preserve the existing green-and-gold meet identity while replacing congressional-specific branding with Bohol provincial terminology.",
+    "Represent every delegation once as a team; derive Elementary, Secondary, and Paragames standings from event divisions."
+  ],
+  "evidence": [],
+  "generatedAt": "2026-10-12T07:03:09.796Z"
+}

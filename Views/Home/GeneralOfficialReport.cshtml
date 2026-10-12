@@ -1,0 +1,864 @@
+@model IEnumerable<ProvMeet.Models.MedalTally>
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@{
+    ViewData["Title"] = "General Official Report";
+    var reportTimestamp = DateTime.UtcNow.AddHours(8).ToString("MMMM dd, yyyy • h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
+}
+
+<style>
+    /* ==========================================
+       CSS VARIABLES FOR THEME
+       ========================================== */
+    :root {
+        --theme-navy: #123F2D;
+        --theme-gold: #d4af37;
+        --theme-gold-dark: #b8942e;
+        --theme-maroon: #800000;
+        --theme-text: #001540;
+        --font-serif: "Times New Roman", Times, serif;
+        --font-sans: "Arial", sans-serif;
+    }
+
+    /* ==========================================
+       SCREEN VIEW STYLING & SETUP CARD
+       ========================================== */
+    .setup-card { 
+        background-color: #ffffff; 
+        border: 1px solid rgba(0, 32, 96, 0.15); 
+        border-top: 4px solid var(--theme-navy);
+        border-radius: 12px;
+        color: #212529; 
+        max-width: 800px; 
+        margin: 0 auto; 
+        box-shadow: 0 8px 25px rgba(0, 32, 96, 0.08);
+    }
+
+    .setup-input { 
+        background-color: #ffffff; 
+        color: #212529; 
+        border: 1px solid #ced4da; 
+    }
+
+    .setup-input:focus { 
+        border-color: var(--theme-navy); 
+        outline: 0; 
+        box-shadow: 0 0 0 0.25rem rgba(0, 32, 96, 0.25); 
+    }
+
+    /* ==========================================
+       REPORT PREVIEW & PRINT STYLING
+       ========================================== */
+    .report-wrapper {
+        background-color: #ffffff;
+        color: var(--theme-text);
+        font-family: var(--font-sans);
+        max-width: 950px; 
+        margin: 0 auto;
+        padding: 10px 20px;
+        position: relative;
+    }
+    
+    .report-header-text { 
+        font-size: 0.85rem; 
+        margin-bottom: 2px; 
+        font-weight: 700; 
+        color: var(--theme-navy);
+        font-family: var(--font-serif);
+        letter-spacing: 0.5px;
+    }
+
+    /* Main Title Banner */
+    .title-banner-wrapper {
+        background-color: var(--theme-gold);
+        padding: 3px;
+        margin: 10px 0;
+        clip-path: polygon(3% 0, 97% 0, 100% 50%, 97% 100%, 3% 100%, 0% 50%);
+    }
+
+    .title-banner-inner {
+        background-color: var(--theme-navy);
+        color: var(--theme-gold);
+        text-align: center;
+        padding: 6px 15px;
+        font-family: var(--font-serif);
+        font-size: 1.1rem;
+        font-weight: 900;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        clip-path: polygon(3% 0, 97% 0, 100% 50%, 97% 100%, 3% 100%, 0% 50%);
+    }
+
+    /* Date and Time Line */
+    .meta-container {
+        border-top: 2px solid var(--theme-gold);
+        border-bottom: 2px solid var(--theme-gold);
+        margin: 5px 40px 28px 40px; /* Increased bottom margin for vertical space above tables */
+        padding: 4px 0;
+        text-align: center;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .meta-label { 
+        font-family: var(--font-sans);
+        font-size: 0.75rem; 
+        color: var(--theme-navy); 
+        font-weight: 700; 
+        letter-spacing: 1px; 
+        margin-right: 10px;
+    }
+
+    .meta-value { 
+        font-size: 0.8rem; 
+        font-weight: 700; 
+        color: var(--theme-navy); 
+        border-bottom: 1px solid var(--theme-navy);
+        padding: 0 15px;
+    }
+
+    /* Grid for Tables */
+    .tables-section {
+        display: flex;
+        flex-direction: column;
+        gap: 15px; 
+    }
+
+    .print-row-split {
+        display: flex;
+        justify-content: center;
+        gap: 6%; 
+        width: 100%;
+    }
+
+    .table-container-half {
+        width: 38%; 
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    /* Maroon Section Tabs */
+    .section-tab-wrapper {
+        background-color: var(--theme-gold);
+        padding: 2px 2px 0 2px;
+        clip-path: polygon(10% 0, 90% 0, 100% 100%, 0% 100%);
+        width: 70%;
+        margin-bottom: -1px; 
+        position: relative;
+        z-index: 2;
+    }
+
+    .section-tab-inner {
+        background-color: var(--theme-maroon);
+        color: #ffffff;
+        text-align: center;
+        padding: 3px 10px;
+        font-family: var(--font-serif);
+        font-size: 0.85rem;
+        font-weight: bold;
+        letter-spacing: 1px;
+        clip-path: polygon(10% 0, 90% 0, 100% 100%, 0% 100%);
+    }
+
+    /* Tables */
+    .table-report { 
+        width: 100%; 
+        border-collapse: collapse; 
+        background-color: #ffffff; 
+        border: 2px solid var(--theme-gold-dark);
+        z-index: 1;
+    }
+
+    .table-report th { 
+        background-color: var(--theme-navy);
+        color: var(--theme-gold);
+        border: 1px solid var(--theme-gold-dark);
+        padding: 4px 4px; 
+        text-align: center; 
+        font-size: 0.68rem; 
+        font-weight: bold; 
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-family: var(--font-sans);
+    }
+
+    .table-report td { 
+        padding: 3px 4px; 
+        font-size: 0.72rem; 
+        border: 1px solid var(--theme-gold-dark);
+        font-weight: 600;
+        color: var(--theme-navy);
+    }
+    
+    .table-report td.text-left { text-align: left; }
+    .table-report th.text-left { text-align: left; }
+
+    /* Footer & Signatures */
+    .footer-section {
+        margin-top: 35px; /* Added spacing between Tables and Certification */
+        font-family: var(--font-sans);
+        padding: 0 20px;
+    }
+
+    .cert-title {
+        font-size: 0.75rem;
+        font-weight: bold;
+        color: var(--theme-navy);
+        margin-bottom: 2px;
+        text-transform: uppercase;
+    }
+
+    .cert-text { 
+        font-size: 0.7rem; 
+        line-height: 1.3; 
+        color: var(--theme-text); 
+        margin-bottom: 40px; 
+        text-align: justify;
+    }
+    
+    .sig-block { 
+        text-align: center; 
+        padding-top: 10px; 
+    }
+
+    .sig-title { 
+        font-size: 0.75rem; 
+        font-weight: 700; 
+        margin-bottom: 2px; 
+        text-transform: uppercase; 
+        color: var(--theme-navy);
+        border-bottom: 1.5px solid var(--theme-navy);
+        display: inline-block;
+        min-width: 170px;
+        padding-bottom: 2px;
+    }
+
+    .sig-line { 
+        font-size: 0.65rem; 
+        color: var(--theme-text); 
+        margin-top: 2px; 
+        font-weight: bold;
+    }
+
+    /* ==========================================
+       NATIVE VECTOR PDF PRINT SPECIFICATIONS
+       A4 Landscape: 0.5in Top/Bottom, 0.75in Left/Right
+       ========================================== */
+    @@page {
+        size: A4 landscape;
+        margin: 0.5in 0.75in;
+    }
+
+    @@media print {
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+
+        header, footer, nav, .d-print-none, #setup-section {
+            display: none !important;
+        }
+
+        body, html {
+            background-color: #ffffff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .container, .container-fluid, main {
+            max-width: 100% !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        #report-section, #pdf-content {
+            display: block !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .report-wrapper {
+            margin: 0 auto !important;
+            padding: 0 !important;
+            border: none !important; 
+            outline: none !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            page-break-inside: avoid !important;
+        }
+
+        .meta-container {
+            margin: 5px 40px 28px 40px !important;
+        }
+        
+        .title-banner-inner { padding: 5px 10px !important; font-size: 1rem !important; }
+        
+        .tables-section { gap: 10px !important; }
+        
+        .print-row-split { 
+            gap: 50px !important; 
+            justify-content: center !important; 
+        }
+
+        .table-container-half {
+            width: 38% !important; 
+        }
+
+        .table-report th { padding: 3px 2px !important; font-size: 0.65rem !important; }
+        .table-report td { padding: 3px 2px !important; font-size: 0.68rem !important; }
+
+        .footer-section { 
+            margin-top: 35px !important; 
+            padding: 0 !important; 
+        }
+        
+        .cert-text { 
+            font-size: 0.68rem !important; 
+            margin-bottom: 45px !important; 
+        }
+        .sig-block { padding-top: 5px !important; page-break-inside: avoid !important; }
+    }
+    /* A fixed paper canvas keeps phone and desktop exports identical. */
+    #report-section { overflow-x: auto; padding-bottom: 1rem; }
+    #pdf-content {
+        --theme-navy: #123f2d; --theme-maroon: #397447; --theme-text: #102c21;
+        width: 277mm; max-width: none; min-height: 185mm; padding: 7mm 9mm;
+        box-sizing: border-box; isolation: isolate;
+        background: repeating-linear-gradient(135deg, transparent 0 25mm, #39744708 25mm 32mm), #fffef7;
+        border: 1px solid #c8a354; box-shadow: 0 8px 25px #123f2d26;
+    }
+    #pdf-content::before, #pdf-content::after { content: ''; position: absolute; left: 0; right: 0; height: 9mm; z-index: -1; pointer-events: none; background: linear-gradient(135deg, #073d28 0 16%, #397447 16% 20%, #c8a354 20% 21%, transparent 21% 79%, #c8a354 79% 80%, #397447 80% 84%, #073d28 84%); }
+    #pdf-content::before { top: 0; }
+    #pdf-content::after { bottom: 0; transform: rotate(180deg); }
+    #pdf-content .report-header-text { font-family: Arial, sans-serif; font-size: 9pt; letter-spacing: .3px; }
+    .report-meet-heading { display: flex; align-items: center; justify-content: center; gap: 6mm; margin: 3mm 0; }
+    .report-meet-heading .meet-art { width: 48mm; height: 19mm; margin: 0; }
+    .report-meet-heading h1 { font: 900 22pt/1.05 Arial, sans-serif; color: #073d28; margin: 0; }
+    .report-meet-heading h1 span { display: block; font-size: 12pt; margin-bottom: 2mm; }
+    .report-meet-heading strong { color: #9b7119; }
+    #pdf-content .title-banner-wrapper { max-width: 100% !important; margin: 3mm 0; }
+    #pdf-content .title-banner-inner { font: 800 14pt Arial, sans-serif; padding: 2mm; color: #fff1bd; background: linear-gradient(120deg,#073d28,#397447,#073d28); }
+    #pdf-content .meta-container { margin: 2mm 0 5mm; border: 0; padding: 0; }
+    #pdf-content .meta-label, #pdf-content .meta-value { font-size: 9pt; }
+    #pdf-content .meta-value { border: 0; padding: 0; }
+    #pdf-content .tables-section { gap: 5mm; }
+    #pdf-content .print-row-split { gap: 7mm; }
+    #pdf-content .table-container-half { width: calc((100% - 7mm) / 2); }
+    #pdf-content .section-tab-wrapper { width: 80%; }
+    #pdf-content .section-tab-inner { font: 700 10pt Arial, sans-serif; padding: 2mm; }
+    #pdf-content .table-report { table-layout: fixed; }
+    #pdf-content .table-report th { padding: 2mm 1mm; font-size: 8pt; letter-spacing: 0; }
+    #pdf-content .table-report td { padding: 2mm 1mm; font-size: 11pt; height: 9mm; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+    #pdf-content .table-report tbody tr:nth-child(even) { background: #edf3ec; }
+    #pdf-content .footer-section { margin-top: 6mm; padding: 0; }
+    #pdf-content .cert-title { text-transform: none; font-size: 10pt; margin-bottom: 6mm; }
+    #dynamic-signatures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5mm; margin: 0; }
+    #dynamic-signatures .sig-block:only-child { grid-column: 2; }
+    #pdf-content .sig-title { font-size: 10pt; min-width: 0; display: block; overflow-wrap: anywhere; }
+    #pdf-content .sig-line { font-size: 9pt; overflow-wrap: anywhere; }
+    @@page { size: A4 landscape; margin: 10mm; }
+    @@media print {
+        #report-section { overflow: visible !important; }
+        #pdf-content { width: 277mm !important; max-width: none !important; min-height: 185mm; padding: 7mm 9mm !important; border: 1px solid #c8a354 !important; box-shadow: none; zoom: var(--report-print-scale, 1); }
+        #pdf-content .title-banner-inner { padding: 2mm !important; font-size: 14pt !important; }
+        #pdf-content .meta-container { margin: 2mm 0 5mm !important; }
+        #pdf-content .tables-section { gap: 5mm !important; }
+        #pdf-content .print-row-split { gap: 7mm !important; }
+        #pdf-content .table-container-half { width: calc((100% - 7mm) / 2) !important; }
+        #pdf-content .table-report th { padding: 2mm 1mm !important; font-size: 8pt !important; }
+        #pdf-content .table-report td { padding: 2mm 1mm !important; font-size: 11pt !important; }
+        #pdf-content .footer-section { margin-top: 6mm !important; }
+    }
+    /* Folio landscape. Physical dimensions are independent of screen width. */
+    @@page { size: 13in 8.5in; margin: .5in; }
+    #pdf-content { display: grid; grid-template-columns: 32% minmax(0, 1fr); width: 12in; min-height: 7.46in; padding: 0; border: 0; }
+    #pdf-content::before, #pdf-content::after { display: none; }
+    .report-poster { position: relative; isolation: isolate; overflow: hidden; padding: .2in .14in .35in; border-right: 5px solid #c8a354; text-align: center; display: flex; flex-direction: column; justify-content: center; background: repeating-linear-gradient(135deg, transparent 0 35px, #39744712 35px 58px), radial-gradient(ellipse, #fffef5 40%, #caddcb); }
+    .report-poster::before, .report-poster::after { content: ''; position: absolute; z-index: -1; left: 0; right: 0; height: .55in; background: linear-gradient(140deg,#073d28 25%,#397447 25% 33%,#c8a354 33% 37%,transparent 37% 75%,#073d28 75%); }
+    .report-poster::before { top: 0; }
+    .report-poster::after { bottom: 0; transform: rotate(180deg); }
+    .report-logos { display: flex; gap: .08in; align-items: center; justify-content: center; margin-bottom: .15in; }
+    .report-logos img { width: auto; height: .52in; max-width: none; flex: 0 0 auto; object-fit: contain; }
+    .report-motto { font: italic 700 14pt/1.2 Georgia,serif; color: #073d28; margin: .12in 0; }
+    .report-poster .meet-art { width: 100%; height: 1.55in; margin: 0; }
+    .report-district { font: italic 800 14pt/1.2 Arial,sans-serif; margin: 0; }
+    .report-event { font: italic 900 29pt/.95 Impact,Arial,sans-serif; color: #073d28; text-shadow: 1px 1px #c8a354; margin: .1in 0; }
+    .report-event strong { display: block; font-size: 43pt; color: #bc902e; }
+    .report-areas { font: 700 8pt Arial,sans-serif; letter-spacing: 1px; margin: .08in 0; }
+    .report-theme { font: italic 700 16pt/1.2 Georgia,serif; margin: .14in 0; }
+    .report-date { font: 700 12pt Arial,sans-serif; margin: .12in 0; }
+    .report-values { font-size: 7pt; letter-spacing: 1px; margin: .12in 0; }
+    .report-main { padding: .22in .14in .3in; display: flex; flex-direction: column; justify-content: space-between; gap: .18in; background: linear-gradient(140deg,#3974470c,transparent 28% 80%,#39744726); }
+    #pdf-content .report-header-text { font-family: "Times New Roman", Times, serif; font-size: 12pt; font-weight: 400; letter-spacing: 0; line-height: 1.2; }
+    #pdf-content .report-header-text:nth-child(2) { font-size: 12pt; font-weight: 700; }
+    #pdf-content .title-banner-wrapper { clip-path: none; background: none; margin: .08in 0 0; padding: 0; }
+    #pdf-content .title-banner-inner { clip-path: none; text-transform: none; letter-spacing: -1px; color: #073d28; background: none; font: 900 35pt/1.15 Georgia,serif; padding: 0; }
+    #pdf-content .meta-container { margin: .08in 0 .18in; }
+    #pdf-content .meta-label, #pdf-content .meta-value { font: 11pt Georgia,serif; letter-spacing: 0; }
+    #pdf-content .meta-label { margin-right: 4px; }
+    #pdf-content .tables-section { gap: .16in; }
+    #pdf-content .print-row-split { gap: .12in; }
+    #pdf-content .table-container-half { width: calc((100% - .12in) / 2); }
+    #pdf-content .section-tab-wrapper { width: 100%; clip-path: none; border-radius: 10px 10px 0 0; overflow: hidden; }
+    #pdf-content .section-tab-inner { clip-path: none; background: linear-gradient(120deg,#073d28,#215c3d); padding: .08in 0; font-size: 11pt; }
+    #pdf-content .table-report th { font-size: 7pt; padding: .07in 1px; }
+    #pdf-content .table-report td { height: .32in; padding: .04in 2px; font-size: 10pt; color: #101b15; }
+    #pdf-content .table-report th:nth-child(2) { width: 28% !important; }
+    #pdf-content .table-report th:nth-child(n+3) { width: 15% !important; }
+    #pdf-content .table-report th:nth-child(3) { background: #d5ad3c; color: #111; }
+    #pdf-content .table-report th:nth-child(4) { background: #b9c5c7; color: #111; }
+    #pdf-content .table-report th:nth-child(5) { background: #a7622a; color: #fff; }
+    #pdf-content .table-report td:nth-child(3) { background: #fff3d2; }
+    #pdf-content .table-report td:nth-child(4) { background: #eceeed; }
+    #pdf-content .table-report td:nth-child(5) { background: #f8e8d9; }
+    #pdf-content .footer-section { margin-top: .2in; }
+    #pdf-content .cert-title { font: 400 12pt/1.2 Verdana, sans-serif !important; margin-bottom: .32in; }
+    #pdf-content .sig-title { border-bottom: 0; border-top: 1px solid #123f2d; padding-top: 4px; text-transform: none; }
+    #pdf-content .sig-title { font: 700 10pt/1.2 Verdana, sans-serif !important; white-space: nowrap; }
+    #pdf-content .sig-name-text { display: inline-block; transform: scaleX(var(--name-fit, 1)); transform-origin: center; }
+    #pdf-content .sig-title { display: flex; justify-content: center; }
+    #pdf-content .sig-name-text { flex-shrink: 0; }
+    #pdf-content .sig-line { font: 400 10pt/1.2 Verdana, sans-serif !important; }
+    @@media screen {
+        #report-section { overflow-x: hidden; }
+        #pdf-content { zoom: var(--report-preview-scale, 1); }
+    }
+    #dynamic-signatures { grid-template-columns: repeat(3,minmax(0,1fr)); gap: .16in; }
+    #dynamic-signatures .sig-block { min-width: 0; padding-left: 0; padding-right: 0; }
+    #dynamic-signatures .sig-block:only-child { grid-column: 2; width: 100%; justify-self: center; }
+    @@media print {
+        #pdf-content { display: grid !important; width: 12in !important; min-height: 7.46in !important; padding: 0 !important; border: 0 !important; }
+        #pdf-content .title-banner-inner { padding: 0 !important; font-size: 35pt !important; }
+        #pdf-content .meta-container { margin: .08in 0 .18in !important; }
+        #pdf-content .tables-section { gap: .16in !important; }
+        #pdf-content .print-row-split { gap: .12in !important; }
+        #pdf-content .table-container-half { width: calc((100% - .12in) / 2) !important; }
+        #pdf-content .table-report th { font-size: 7pt !important; padding: .07in 1px !important; }
+        #pdf-content .table-report td { font-size: 10pt !important; padding: .04in 2px !important; }
+        #pdf-content .footer-section { margin-top: .2in !important; }
+    }
+</style>
+
+<div class="container py-4">
+
+    <!-- STEP 1: CONFIGURATION SETUP -->
+    <div id="setup-section" class="card setup-card p-4 mb-4 d-print-none">
+        <h4 class="fw-bold mb-3 border-bottom pb-2" style="color: var(--theme-navy); font-family: var(--font-sans);">
+            <i class="bi bi-gear-fill me-2"></i> Configure General Report
+        </h4>
+        
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label fw-bold mb-0" style="color: var(--theme-navy);">Signatories</label>
+                <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="addSignatory()">
+                    <i class="bi bi-plus-lg me-1"></i> Add Signatory
+                </button>
+            </div>
+
+            <div id="signatory-error" class="alert alert-danger py-2 px-3 mb-3 fw-bold d-flex align-items-center" style="display: none;" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> Please enter at least one signatory (Name or Designation) before generating the report.
+            </div>
+            
+            <div id="signatories-container">
+                <div class="row mb-2 signatory-row">
+                    <div class="col-sm-5">
+                        <input type="text" class="form-control setup-input sig-name" placeholder="Name" value="MARIO L. GARCIA, PhD" />
+                    </div>
+                    <div class="col-sm-6">
+                        <input type="text" class="form-control setup-input sig-designation" placeholder="Designation" value="Chief Recorder" />
+                    </div>
+                    <div class="col-sm-1 text-end">
+                        <button type="button" class="btn btn-outline-danger btn-sm mt-1" title="Remove" onclick="this.closest('.signatory-row').remove()">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-2">
+            <a asp-action="Index" class="btn btn-outline-secondary px-4 fw-bold">Cancel</a>
+            <button type="button" class="btn text-white px-4 fw-bold" style="background-color: var(--theme-navy); border-color: var(--theme-navy);" onclick="generateReport()">
+                <i class="bi bi-file-earmark-check me-1"></i> Generate Report
+            </button>
+        </div>
+    </div>
+
+    <!-- STEP 2: REPORT PREVIEW / PRINT AREA -->
+    <div id="report-section" style="display: none;">
+        
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center mb-4 mx-auto gap-3 d-print-none" style="max-width: 950px;">
+            <button onclick="backToSetup()" class="btn btn-outline-secondary btn-sm fw-bold align-self-start align-self-sm-center">
+                <i class="bi bi-arrow-left me-1"></i> Edit Signatories
+            </button>
+            
+            <div class="d-flex gap-2">
+                <button onclick="window.print()" class="btn text-white shadow px-4 fw-bold" style="background-color: var(--theme-navy); border-color: var(--theme-navy);">
+                    <i class="bi bi-printer me-1"></i> Print / Export Vector PDF
+                </button>
+            </div>
+        </div>
+
+        <div id="pdf-content" class="report-wrapper">
+            <aside class="report-poster">
+                <div class="report-logos">
+                    <img src="~/images/deped_logo.png" asp-append-version="true" alt="Department of Education" />
+                    <img src="~/images/r7_logo.png" asp-append-version="true" alt="Region VII" />
+                    <img src="~/images/sdobohol_logo.png" asp-append-version="true" alt="Schools Division of Bohol" />
+                    <img src="~/images/bohol_logo.png" asp-append-version="true" alt="Province of Bohol" />
+                </div>
+                <p class="report-motto">One Province · One Spirit<br />Brighter Futures</p>
+                <partial name="~/Views/Home/_MeetHeroArt.cshtml" />
+                <p class="report-district">Province of Bohol</p>
+                <div class="report-event">PROVINCIAL ATHLETIC MEET<strong>2026</strong></div>
+                <p class="report-areas">ELEMENTARY · SECONDARY · PARAGAMES</p>
+                <p class="report-theme">“Strong Together.<br />Greater Tomorrow”</p>
+                <p class="report-date">@(Configuration["Meet:DisplayDate"] ?? "Schedule to be announced")</p>
+                <p class="report-values">DISCIPLINE · SPORTSMANSHIP<br />EXCELLENCE · UNITY</p>
+            </aside>
+            <div class="report-main">
+            
+            <!-- HEADER SECTION -->
+            <div>
+                <div class="text-center">
+                    <div class="report-header-text">Republic of the Philippines</div>
+                    <div class="report-header-text">Department of Education</div>
+                    <div class="report-header-text">Division of Bohol</div>
+                </div>
+
+                <div class="title-banner-wrapper mx-auto" style="max-width: 80%;">
+                    <div class="title-banner-inner">
+                        Official Medal Tally
+                    </div>
+                </div>
+
+                <div class="meta-container">
+                    <span class="meta-label">As of </span>
+                    <span class="meta-value">@reportTimestamp</span>
+                </div>
+            </div>
+
+            <!-- TABLES SECTION (2x2 GRID) -->
+            <div class="tables-section">
+                
+                <!-- ROW 1: OVERALL & SECONDARY -->
+                <div class="print-row-split">
+                    <div class="table-container-half">
+                        <div class="section-tab-wrapper">
+                            <div class="section-tab-inner">OVERALL (ELEM+SEC)</div>
+                        </div>
+                        <table class="table-report" id="overall-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 12%;">Rank</th>
+                                    <th class="text-left" style="width: 38%;">Team</th>
+                                    <th style="width: 12.5%;">Gold</th>
+                                    <th style="width: 12.5%;">Silver</th>
+                                    <th style="width: 12.5%;">Bronze</th>
+                                    <th style="width: 12.5%;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="overall-tbody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-container-half">
+                        <div class="section-tab-wrapper">
+                            <div class="section-tab-inner">SECONDARY</div>
+                        </div>
+                        <table class="table-report" id="secondary-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 12%;">Rank</th>
+                                    <th class="text-left" style="width: 38%;">Team</th>
+                                    <th style="width: 12.5%;">Gold</th>
+                                    <th style="width: 12.5%;">Silver</th>
+                                    <th style="width: 12.5%;">Bronze</th>
+                                    <th style="width: 12.5%;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="secondary-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ROW 2: ELEMENTARY & PARAGAMES -->
+                <div class="print-row-split">
+                    <div class="table-container-half">
+                        <div class="section-tab-wrapper">
+                            <div class="section-tab-inner">ELEMENTARY</div>
+                        </div>
+                        <table class="table-report" id="elementary-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 12%;">Rank</th>
+                                    <th class="text-left" style="width: 38%;">Team</th>
+                                    <th style="width: 12.5%;">Gold</th>
+                                    <th style="width: 12.5%;">Silver</th>
+                                    <th style="width: 12.5%;">Bronze</th>
+                                    <th style="width: 12.5%;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="elementary-tbody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-container-half">
+                        <div class="section-tab-wrapper">
+                            <div class="section-tab-inner">PARAGAMES</div>
+                        </div>
+                        <table class="table-report" id="paragames-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 12%;">Rank</th>
+                                    <th class="text-left" style="width: 38%;">Team</th>
+                                    <th style="width: 12.5%;">Gold</th>
+                                    <th style="width: 12.5%;">Silver</th>
+                                    <th style="width: 12.5%;">Bronze</th>
+                                    <th style="width: 12.5%;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="paragames-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- FOOTER SECTION (CERTIFICATION & SIGNATORIES) -->
+            <div class="footer-section">
+                <div class="cert-title">Certified Correct:</div>
+
+                <div class="row justify-content-center" id="dynamic-signatures"></div>
+            </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const rawTallies = [
+            @if(Model != null)
+            {
+                foreach (var tally in Model)
+                {
+                    var teamName = tally.Team?.Name ?? "Unknown Team";
+                    var teamDivision = tally.Division;
+                    @: { name: @Json.Serialize(teamName), division: @Json.Serialize(teamDivision), gold: @tally.Gold, silver: @tally.Silver, bronze: @tally.Bronze },
+                }
+            }
+        ];
+
+        // Function to dynamically append report signatories.
+        function addSignatory() {
+            const container = document.getElementById('signatories-container');
+            const row = document.createElement('div');
+            row.className = 'row mb-2 signatory-row';
+            row.innerHTML = `
+                <div class="col-sm-5">
+                    <input type="text" class="form-control setup-input sig-name" placeholder="Name" />
+                </div>
+                <div class="col-sm-6">
+                    <input type="text" class="form-control setup-input sig-designation" placeholder="Designation" />
+                </div>
+                <div class="col-sm-1 text-end">
+                    <button type="button" class="btn btn-outline-danger btn-sm mt-1" title="Remove" onclick="this.closest('.signatory-row').remove()">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(row);
+        }
+
+        function getRankedTallies(list) {
+            const sorted = [...list].sort((a, b) => {
+                if (b.gold !== a.gold) return b.gold - a.gold;
+                if (b.silver !== a.silver) return b.silver - a.silver;
+                if (b.bronze !== a.bronze) return b.bronze - a.bronze;
+                return a.name.localeCompare(b.name);
+            });
+
+            let ranked = [];
+            let runningCount = 1;
+            let displayRank = 1;
+            let prev = null;
+
+            sorted.forEach((item) => {
+                if (prev !== null && item.gold === prev.gold && item.silver === prev.silver && item.bronze === prev.bronze) {
+                    // Retain rank for ties
+                } else {
+                    displayRank = runningCount;
+                }
+                ranked.push({ ...item, rank: displayRank });
+                prev = item;
+                runningCount++;
+            });
+
+            return ranked;
+        }
+
+        function renderTableRows(tbodyId, dataList) {
+            const tbody = document.getElementById(tbodyId);
+            tbody.innerHTML = '';
+
+            const minRows = 3;
+
+            if (dataList.length === 0) {
+                for(let i=0; i<minRows; i++) {
+                    tbody.innerHTML += `<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>`;
+                }
+                return;
+            }
+
+            dataList.forEach(item => {
+                const total = item.gold + item.silver + item.bronze;
+                const districtName = item.name.replace(/\bdistrict\b/ig, '').trim();
+                const tr = document.createElement('tr');
+                const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({
+                    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+                })[character]);
+                tr.innerHTML = [item.rank, districtName, item.gold, item.silver, item.bronze, total]
+                    .map((value, index) => `<td class="${index === 1 ? 'text-left' : 'text-center'}">${escapeHtml(value)}</td>`)
+                    .join('');
+                tbody.appendChild(tr);
+            });
+            
+            if (dataList.length < minRows) {
+                for(let i=dataList.length; i<minRows; i++) {
+                     tbody.innerHTML += `<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>`;
+                }
+            }
+        }
+
+        function generateReport() {
+            const sigRows = document.querySelectorAll('.signatory-row');
+            const validSignatories = [];
+            const sigError = document.getElementById('signatory-error');
+
+            sigRows.forEach(row => {
+                const nameInput = row.querySelector('.sig-name');
+                const designationInput = row.querySelector('.sig-designation');
+                
+                const name = nameInput ? nameInput.value.trim() : '';
+                const designation = designationInput ? designationInput.value.trim() : '';
+                
+                if (name !== '' || designation !== '') {
+                    validSignatories.push({
+                        name: name || '_________________________',
+                        designation: designation || '_________________________'
+                    });
+                }
+            });
+
+            if (validSignatories.length === 0) {
+                if (sigError) sigError.style.display = 'flex';
+                const firstInput = document.querySelector('.sig-name');
+                if (firstInput) firstInput.focus();
+                return; 
+            }
+
+            if (sigError) sigError.style.display = 'none';
+
+            const secondaryList = rawTallies.filter(t => (t.division || '').toLowerCase() === 'secondary');
+            const elementaryList = rawTallies.filter(t => (t.division || '').toLowerCase() === 'elementary');
+            
+            const overallMap = {};
+            [...secondaryList, ...elementaryList].forEach(t => {
+                const key = t.name.trim().toLowerCase();
+                if (!overallMap[key]) {
+                    overallMap[key] = { name: t.name, gold: 0, silver: 0, bronze: 0 };
+                }
+                overallMap[key].gold += t.gold;
+                overallMap[key].silver += t.silver;
+                overallMap[key].bronze += t.bronze;
+            });
+            const overallList = Object.values(overallMap);
+            
+            renderTableRows('overall-tbody', getRankedTallies(overallList));
+            renderTableRows('secondary-tbody', getRankedTallies(secondaryList));
+            renderTableRows('elementary-tbody', getRankedTallies(elementaryList));
+
+            const paragamesList = rawTallies.filter(t => (t.division || '').toLowerCase() === 'paragames');
+            renderTableRows('paragames-tbody', getRankedTallies(paragamesList));
+
+            const sigContainer = document.getElementById('dynamic-signatures');
+            sigContainer.innerHTML = ''; 
+
+            validSignatories.forEach(sig => {
+                const sigBlock = document.createElement('div');
+                sigBlock.className = 'col sig-block';
+                const name = document.createElement('div');
+                name.className = 'sig-title';
+                const nameText = document.createElement('span');
+                nameText.className = 'sig-name-text';
+                nameText.textContent = sig.name;
+                name.appendChild(nameText);
+                const designation = document.createElement('div');
+                designation.className = 'sig-line';
+                designation.textContent = sig.designation;
+                sigBlock.appendChild(name);
+                sigBlock.appendChild(designation);
+                sigContainer.appendChild(sigBlock);
+            });
+
+            document.getElementById('setup-section').style.display = 'none';
+            document.getElementById('report-section').style.display = 'block';
+            fitReportToPaper();
+            fitReportPreview();
+        }
+
+        function fitReportToPaper() {
+            const report = document.getElementById('pdf-content');
+            report.style.removeProperty?.('--report-print-scale');
+            if (!report.offsetWidth || !report.scrollHeight) return;
+            fitSignatoryNames();
+            // 13 x 8.5 inch paper, 0.5 inch margins: 12 x 7.5 inch content.
+            const pixelsPerInch = report.offsetWidth / 12;
+            const scale = Math.min(1, (7.48 * pixelsPerInch) / report.scrollHeight);
+            report.style.setProperty('--report-print-scale', scale.toFixed(4));
+        }
+        function fitSignatoryNames() {
+            const container = document.getElementById('dynamic-signatures');
+            const labels = [...container.querySelectorAll('.sig-name-text')];
+            if (!labels.length) return;
+            // Allocate the three columns by name length instead of equal thirds.
+            const widths = [1, 1, 1];
+            labels.forEach((label, index) => {
+                label.style.removeProperty('--name-fit');
+                widths[index % 3] = Math.max(widths[index % 3], label.offsetWidth + 12);
+            });
+            if (labels.length > 1) {
+                container.style.gridTemplateColumns = widths.map(width => `minmax(0, ${width}fr)`).join(' ');
+            } else { container.style.removeProperty('grid-template-columns'); }
+            labels.forEach(label => {
+                const available = label.parentElement.clientWidth;
+                label.style.setProperty('--name-fit', Math.min(1, available / Math.max(1, label.offsetWidth)).toFixed(4));
+            });
+        }
+        if (typeof window !== 'undefined') window.addEventListener('beforeprint', fitReportToPaper);
+        function fitReportPreview() {
+            const report = document.getElementById('pdf-content');
+            const section = document.getElementById('report-section');
+            if (!report.offsetWidth || !section.clientWidth) return;
+            // Scale the screen preview only; print keeps its physical paper size.
+            const scale = Math.min(1, (section.clientWidth - 2) / report.offsetWidth);
+            report.style.setProperty('--report-preview-scale', scale.toFixed(4));
+        }
+        if (typeof window !== 'undefined') {
+            window.addEventListener('resize', fitReportPreview);
+            window.addEventListener('afterprint', fitReportPreview);
+            window.visualViewport?.addEventListener('resize', fitReportPreview);
+        }
+        document.fonts?.ready.then(() => { fitReportToPaper(); fitReportPreview(); });
+
+        function backToSetup() {
+            document.getElementById('report-section').style.display = 'none';
+            document.getElementById('setup-section').style.display = 'block';
+        }
+    </script>
+}

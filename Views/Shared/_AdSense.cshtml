@@ -1,0 +1,17 @@
+@{
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+    var action = ViewContext.RouteData.Values["action"]?.ToString();
+    var isPublicPage = (controller, action) switch
+    {
+        ("Home", "Index") => true,
+        ("Rankings", "Index") => true,
+        ("Events", "Index") => true,
+        ("Teams", "Dashboard" or "Details") => true,
+        _ => false
+    };
+}
+@if (isPublicPage)
+{
+    <meta name="google-adsense-account" content="ca-pub-4786418340598960" />
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4786418340598960" crossorigin="anonymous"></script>
+}

@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="utf-8" />
+    <partial name="_AdSense" />
+    <!-- viewport-fit=cover is required for iOS safe-area-insets to work properly -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>@ViewData["Title"] - Bohol Provincial Athletic Meet 2026</title>
+    
+    <link rel="shortcut icon" href="~/images/bohol_logo.png" asp-append-version="true" type="image/png" />
+    <link rel="manifest" href="~/manifest.json" />
+    <meta name="theme-color" content="#123F2D" />
+    <link rel="apple-touch-icon" href="~/images/bohol_logo.png" />
+    <script src="~/js/app-install.js" asp-append-version="true" defer></script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <!-- Modern, highly readable typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/ProvMeet.styles.css" asp-append-version="true" />
+    
+    <style>
+        /* ========================================== */
+        /* CONGRESSIONAL CLASSIC - DESIGN SYSTEM      */
+        /* ========================================== */
+        :root { 
+            /* Color Palette */
+            --cc-primary: #123F2D;
+            --cc-primary-dark: #092D20;
+            --cc-secondary: #397447;
+            --cc-secondary-dark: #285735;
+            --cc-gold: #C8A354;
+            --cc-gold-light: #F5E3A1;
+            
+            --cc-white: #FFFFFF;
+            --cc-background: #F4F7F2;
+            
+            --cc-text: #17202A;
+            --cc-text-secondary: #667085;
+            --cc-text-muted: #98A2B3;
+            --cc-border: #D9DEE5;
+
+            /* Utility Colors */
+            --cc-success: #16803C;
+            --cc-warning: #B7791F;
+            --cc-danger: #C53030;
+            --cc-info: #245B8F;
+
+            /* Modern UI Variables */
+            --cc-radius-sm: 6px;
+            --cc-radius-md: 10px;
+            --cc-radius-lg: 14px;
+            
+            --cc-shadow-sm: 0 2px 6px rgba(18, 63, 45, 0.04);
+            --cc-shadow-md: 0 8px 24px rgba(18, 63, 45, 0.06);
+            --cc-shadow-hover: 0 8px 20px rgba(18, 63, 45, 0.10), 0 16px 32px rgba(18, 63, 45, 0.06);
+            
+            --cc-transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+
+            /* Base Font overrides */
+            --font-body: 'Inter', Segoe UI, Arial, sans-serif;
+            --bs-body-font-family: var(--font-body); 
+            color-scheme: light;
+        }
+
+        /* BASE CANVAS BACKGROUND */
+        html {
+            background-color: var(--cc-background);
+            margin: 0 !important; 
+            padding: 0 !important;
+            height: 100%;
+        }
+
+        body { 
+            font-family: var(--font-body); 
+            color: var(--cc-text); 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Typography */
+        h1, h2, h3, h4, h5, h6, .brand-title { 
+            font-family: var(--font-body) !important; 
+            font-weight: 700;
+        }
+
+        .offcanvas-title {
+            font-weight: 800;
+            font-size: 1.5rem;
+            letter-spacing: -0.5px;
+        }
+
+        /* Animated Gradient Keyframes */
+        @@keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Header - textured forest-green gradient with gold detailing. */
+        .navbar-custom { 
+            background:
+                repeating-linear-gradient(135deg, transparent 0 32px, rgba(245, 227, 161, 0.04) 32px 33px, transparent 33px 44px),
+                radial-gradient(ellipse at 50% 0%, rgba(57, 116, 71, 0.4), transparent 75%),
+                linear-gradient(-45deg, #123F2D 0%, #092D20 45%, #285735 75%, #123F2D 100%) !important;
+            background-size: auto, 100% 100%, 300% 300% !important;
+            animation: gradientMove 12s ease-in-out infinite !important;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 3px solid var(--cc-gold) !important;
+            box-shadow: 0 4px 18px rgba(9, 45, 32, 0.2), inset 0 -1px 0 rgba(245, 227, 161, 0.16);
+            transition: var(--cc-transition);
+        }
+
+        /* LOGO STYLING */
+        .navbar-logo { 
+            height: 48px; 
+            width: auto; 
+            background-color: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            object-fit: contain;
+            transition: transform 0.2s ease;
+        }
+
+        .areas-brand-logo {
+            width: min(430px, 42vw);
+            height: auto;
+            max-height: 54px;
+            object-fit: contain;
+        }
+
+        @@media (max-width: 575.98px) {
+            .areas-brand-logo { width: min(300px, 56vw); max-height: 42px; }
+        }
+
+        .navbar-brand:hover .navbar-logo {
+            transform: scale(1.02);
+        }
+
+        .brand-title { 
+            background: linear-gradient(125deg, #F5E3A1 8%, #C8A354 22%, #F5E3A1 38%, #DAB96B 52%, #C8A354 62%, #F5E3A1 75%, #DAB96B 95%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            width: fit-content;
+            filter: drop-shadow(0.4px 0 0 #fff)
+                    drop-shadow(-0.4px 0 0 #fff)
+                    drop-shadow(0 0.4px 0 #fff)
+                    drop-shadow(0 -0.4px 0 #fff)
+                    drop-shadow(0 1px 0 rgba(255,255,255,0.6))
+                    drop-shadow(0 2px 3px rgba(0,0,0,0.35));
+            font-size: clamp(1.1rem, 2.5vw, 1.35rem); 
+            letter-spacing: 1px; 
+            font-weight: 800;
+            margin-bottom: 0; 
+            line-height: 1.1; 
+            text-transform: uppercase;
+        }
+
+        .brand-subtitle { 
+            color: var(--cc-gold-light); 
+            font-size: 0.75rem; 
+            letter-spacing: 1.5px; 
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        /* Offcanvas Drawer - Clean Light Surface */
+        .offcanvas-custom { 
+            background-color: var(--cc-white); 
+            border-left: 1px solid var(--cc-border); 
+            box-shadow: -8px 0 32px rgba(18, 63, 45, 0.12); 
+            max-width: 320px; 
+            border-top-left-radius: var(--cc-radius-lg);
+            border-bottom-left-radius: var(--cc-radius-lg);
+        }
+
+        .offcanvas {
+            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+        }
+
+        .offcanvas-header {
+            border-bottom: 1px solid var(--cc-border);
+            padding: 1.25rem 1.5rem;
+        }
+
+        .drawer-section-title { 
+            color: var(--cc-text-muted); 
+            font-size: 0.75rem; 
+            letter-spacing: 1.5px; 
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-bottom: 0.75rem; 
+            margin-top: 2rem; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            padding-left: 0.5rem;
+        }
+        
+        /* Navigation Links - Navy Default, Burgundy Hover */
+        .drawer-link { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 10px 14px; 
+            color: var(--cc-primary);
+            text-decoration: none; 
+            border-radius: var(--cc-radius-md); 
+            margin-bottom: 4px; 
+            font-weight: 600;
+            font-size: 0.95rem; 
+            transition: var(--cc-transition); 
+            border: 1px solid transparent;
+        }
+
+        .drawer-link:hover, .drawer-link:focus-visible { 
+            background-color: var(--cc-background); 
+            color: var(--cc-secondary); 
+            border-color: var(--cc-border);
+            transform: translateX(4px); 
+        }
+
+        .drawer-link .icon-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .drawer-link i { 
+            color: var(--cc-primary); 
+            font-size: 1.15rem; 
+            transition: color 0.2s ease;
+        }
+
+        .drawer-link:hover i {
+            color: var(--cc-secondary); 
+        }
+
+        .drawer-link .chevron { 
+            color: var(--cc-primary); 
+            font-size: 0.8rem;
+            transition: transform 0.2s ease, color 0.2s ease;
+        }
+        
+        .drawer-link:hover .chevron {
+            color: var(--cc-secondary); 
+        }
+
+        /* Expandable Dropdown styling */
+        .drawer-dropdown-container {
+            position: relative;
+        }
+
+        .drawer-submenu {
+            display: none;
+            padding-left: 2.5rem;
+            list-style: none;
+            margin: 0 0 8px 0;
+            animation: fadeInSubmenu 0.2s ease forwards;
+        }
+
+        @@keyframes fadeInSubmenu {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .drawer-dropdown-container.show-submenu .drawer-submenu {
+            display: block;
+        }
+
+        .drawer-dropdown-container.show-submenu > .drawer-link .chevron {
+            transform: rotate(90deg);
+            color: var(--cc-secondary); 
+        }
+        
+        .drawer-dropdown-container.show-submenu > .drawer-link,
+        .drawer-dropdown-container.show-submenu > .drawer-link i {
+            color: var(--cc-secondary); 
+        }
+
+        .drawer-sub-link {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            color: var(--cc-primary); 
+            text-decoration: none;
+            border-radius: var(--cc-radius-md);
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: var(--cc-transition);
+        }
+
+        .drawer-sub-link:hover {
+            background-color: var(--cc-background);
+            color: var(--cc-secondary); 
+            transform: translateX(4px);
+        }
+
+        .drawer-sub-link i {
+            color: var(--cc-primary); 
+            transition: color 0.2s ease;
+        }
+        
+        .drawer-sub-link:hover i {
+            color: var(--cc-secondary) !important; 
+        }
+
+        /* Footer */
+        .footer-custom { 
+            background-color: var(--cc-primary-dark);
+            background-image:
+                repeating-linear-gradient(135deg, transparent 0 32px, rgba(245, 227, 161, 0.04) 32px 33px, transparent 33px 44px),
+                radial-gradient(ellipse at 50% 0%, rgba(57, 116, 71, 0.6), transparent 75%),
+                linear-gradient(110deg, #092D20, #123F2D 50%, #092D20);
+            padding: 1.2rem 0; 
+            border-top: 2px solid var(--cc-gold);
+            margin-top: auto;
+            box-shadow: 0 -4px 18px rgba(18, 63, 45, 0.12), inset 0 1px 0 rgba(245, 227, 161, 0.16);
+        }
+
+        .footer-text { 
+            margin: 0 !important; 
+            font-weight: 500; 
+            color: #F5E3A1;
+            font-size: 0.85rem; 
+        }
+
+        /* FLOATING BOTTOM NAVIGATION (Mobile Only Base) */
+        .mobile-bottom-nav {
+            display: none;
+        }
+
+        .mobile-report-panel {
+            position: absolute;
+            bottom: calc(100% + 12px);
+            left: 0;
+            right: 0;
+            max-height: min(60vh, 420px);
+            overflow-y: auto;
+            padding: .6rem;
+            background: #123F2D;
+            color: #fff;
+            border: 1px solid #C8A354;
+            border-radius: 16px;
+            box-shadow: 0 8px 28px rgba(9, 45, 32, .3);
+        }
+        .mobile-report-heading { color: #F5E3A1; font-weight: 800; padding: .5rem .65rem; }
+        .mobile-report-panel a { display: block; padding: .7rem .65rem; color: #fff; font-size: .85rem; text-decoration: none; border-radius: 8px; }
+        .mobile-report-panel a:hover, .mobile-report-panel a:focus-visible,
+        .mobile-report-panel a[aria-current="page"] { background: #285735; color: #F5E3A1; }
+        @@media (max-width: 991.98px) and (orientation: landscape) {
+            .mobile-report-panel { left: calc(100% + 12px); right: auto; bottom: 0; width: min(320px, calc(100vw - 110px)); max-height: calc(100dvh - 28px); }
+        }
+
+        /* Reduced Motion */
+        @@media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+        /* Mobile View Customization - PORTRAIT */
+        @@media (max-width: 575.98px) and (orientation: portrait) {
+            body {
+                /* iOS Safe Area fix for body padding */
+                padding-bottom: calc(90px + env(safe-area-inset-bottom)) !important;
+            }
+
+            .navbar-logo {
+                height: 38px;
+            }
+
+            .brand-subtitle {
+                font-size: 0.65rem;
+                letter-spacing: 1px;
+            }
+
+            .navbar-brand.gap-3 {
+                gap: 0.75rem !important; 
+            }
+
+            .navbar-brand .gap-2 {
+                gap: 0.25rem !important; 
+            }
+
+            /* Hide Hamburger Icon on Mobile */
+            .navbar-toggler {
+                display: none !important;
+            }
+
+            /* Ultra-responsive & Optimized Floating Bottom Nav with Animated Gradient */
+            .mobile-bottom-nav {
+                display: block;
+                position: fixed;
+                /* iOS Safe Area fix for bottom placement */
+                bottom: calc(14px + env(safe-area-inset-bottom));
+                left: 50%;
+                transform: translateX(-50%);
+                width: calc(100% - 32px);
+                max-width: 380px;
+                z-index: 1050;
+                background: linear-gradient(-45deg, 
+                rgba(18, 63, 45, 0.95) 0%, 
+                rgba(9, 45, 32, 0.95) 65%, 
+                rgba(57, 116, 71, 0.95) 90%, 
+                rgba(18, 63, 45, 0.95) 100%);
+                background-size: 300% 300%;
+                animation: gradientMove 12s ease-in-out infinite;
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border: 1px solid rgba(200, 163, 84, 0.4);
+                border-radius: 24px;
+                box-shadow: 0 8px 24px rgba(18, 63, 45, 0.28);
+                padding: 4px;
+                will-change: transform;
+            }
+
+            .mobile-nav-container {
+                display: flex;
+                align-items: center;
+                justify-content: safe center;
+                gap: 2px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+                width: 100%;
+            }
+
+            @@supports not (justify-content: safe center) {
+                .mobile-nav-container {
+                    justify-content: center;
+                }
+            }
+
+            .mobile-nav-container::-webkit-scrollbar {
+                display: none;
+            }
+
+            .mobile-nav-item {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                min-width: 58px;
+                padding: 6px 6px;
+                color: rgba(255, 255, 255, 0.75);
+                text-decoration: none;
+                border-radius: 18px;
+                font-size: 0.68rem;
+                font-weight: 600;
+                white-space: nowrap;
+                flex-shrink: 0;
+                cursor: pointer;
+                touch-action: manipulation;
+                -webkit-tap-highlight-color: transparent;
+                transition: transform 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+                will-change: transform;
+            }
+
+            .mobile-nav-item i {
+                font-size: 1.2rem;
+                margin-bottom: 2px;
+                transition: transform 0.12s ease, color 0.12s ease;
+            }
+
+            .mobile-nav-item:active {
+                transform: scale(0.92);
+                background: rgba(255, 255, 255, 0.18);
+            }
+
+            .mobile-nav-item.active {
+                color: var(--cc-gold-light);
+                background: rgba(255, 255, 255, 0.12);
+            }
+
+            .mobile-nav-item.active i {
+                color: var(--cc-gold);
+                transform: translateY(-1px);
+            }
+        }
+
+        /* Mobile View Customization - LANDSCAPE MODE (Docked Left to Bottom, Vertically Scrollable) */
+        @@media (max-width: 991.98px) and (orientation: landscape) {
+            body {
+                padding-bottom: 0 !important;
+                /* Added safe area fix for notches on landscape devices */
+                padding-left: calc(80px + env(safe-area-inset-left)) !important; 
+            }
+
+            .navbar-toggler {
+                display: none !important;
+            }
+
+            .mobile-bottom-nav {
+                display: block;
+                position: fixed;
+                top: calc(12px + env(safe-area-inset-top));
+                bottom: calc(12px + env(safe-area-inset-bottom));
+                /* iOS Safe Area fix for landscape placement */
+                left: calc(12px + env(safe-area-inset-left));
+                transform: none;
+                width: 68px;
+                max-width: none;
+                height: calc(100vh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+                max-height: calc(100vh - 24px);
+                z-index: 1050;
+                background: linear-gradient(-45deg, 
+                    rgba(18, 63, 45, 0.95) 0%, 
+                    rgba(9, 45, 32, 0.95) 65%, 
+                    rgba(57, 116, 71, 0.95) 90%, 
+                    rgba(18, 63, 45, 0.95) 100%);
+                background-size: 300% 300%;
+                animation: gradientMove 12s ease-in-out infinite;
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border: 1px solid rgba(200, 163, 84, 0.4);
+                border-radius: 24px;
+                box-shadow: 0 8px 24px rgba(18, 63, 45, 0.28);
+                padding: 6px 3px;
+                overflow: hidden;
+            }
+
+            .mobile-nav-container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: flex-start;
+                gap: 6px;
+                height: 100%;
+                width: 100%;
+                overflow-y: auto;
+                overflow-x: hidden;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+            }
+
+            .mobile-nav-container::-webkit-scrollbar {
+                display: none;
+            }
+
+            .mobile-nav-item {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+                min-width: unset;
+                padding: 8px 2px;
+                color: rgba(255, 255, 255, 0.75);
+                text-decoration: none;
+                border-radius: 16px;
+                font-size: 0.62rem;
+                font-weight: 600;
+                white-space: nowrap;
+                flex-shrink: 0;
+                cursor: pointer;
+                touch-action: manipulation;
+                -webkit-tap-highlight-color: transparent;
+                transition: transform 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+            }
+
+            .mobile-nav-item i {
+                font-size: 1.15rem;
+                margin-bottom: 2px;
+                transition: transform 0.12s ease, color 0.12s ease;
+            }
+
+            .mobile-nav-item:active {
+                transform: scale(0.92);
+                background: rgba(255, 255, 255, 0.18);
+            }
+
+            .mobile-nav-item.active {
+                color: var(--cc-gold-light);
+                background: rgba(255, 255, 255, 0.12);
+            }
+
+            .mobile-nav-item.active i {
+                color: var(--cc-gold);
+                transform: translateY(-1px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="sticky-top">
+        <nav class="navbar navbar-custom">
+            <div class="container">
+                <a class="navbar-brand d-flex align-items-center gap-3 text-decoration-none" asp-controller="Home" asp-action="Index">
+                    <div class="d-flex gap-2">
+                        <img src="~/images/deped_logo.png" alt="DepEd Logo" class="navbar-logo" />
+                        <img src="~/images/sdobohol_logo.png" alt="Bohol Logo" class="navbar-logo" />
+                    </div>
+                    <div class="d-flex flex-column">
+                        <span class="brand-subtitle">Division of Bohol</span>
+                        <span class="brand-title">BOHOL PROVINCIAL MEET</span>
+                    </div>
+                </a>
+                
+                <button class="navbar-toggler border-0 shadow-none px-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasMenu">
+                    <i class="bi bi-list" style="font-size: 2rem; color: var(--cc-white);"></i>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Desktop Offcanvas Menu -->
+    <div class="offcanvas offcanvas-end offcanvas-custom" tabindex="-1" id="offcanvasMenu">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title d-flex align-items-center" style="color: var(--cc-primary);">
+                <i class="bi bi-grid-fill me-3" style="font-size: 1.5rem; color: var(--cc-primary);"></i> Menu
+            </h5>
+            <button type="button" class="btn-close shadow-none" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        
+        <div class="offcanvas-body px-3 py-4">
+            <a asp-controller="Home" asp-action="Index" class="drawer-link">
+                <div class="icon-container"><i class="bi bi-house-door-fill"></i> Home</div>
+                <i class="bi bi-chevron-right chevron"></i>
+            </a>
+            <a asp-controller="Rankings" asp-action="Index" class="drawer-link">
+                <div class="icon-container"><i class="bi bi-trophy-fill"></i> Rankings</div>
+                <i class="bi bi-chevron-right chevron"></i>
+            </a>
+            <a asp-controller="Events" asp-action="Index" class="drawer-link">
+                <div class="icon-container"><i class="bi bi-calendar-event-fill"></i> Events</div>
+                <i class="bi bi-chevron-right chevron"></i>
+            </a>
+            <a asp-controller="Teams" asp-action="Dashboard" class="drawer-link">
+                <div class="icon-container"><i class="bi bi-people-fill"></i> Teams</div>
+                <i class="bi bi-chevron-right chevron"></i>
+            </a>
+
+            <div class="drawer-section-title"><i class="bi bi-shield-lock-fill me-2" style="color: var(--cc-text-muted);"></i> Account</div>
+            
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <div class="px-3 mb-3 pb-2 border-bottom small text-muted">
+                    Logged in as:<br/>
+                    <strong style="color: var(--cc-primary); font-size: 1rem;">@(User.FindFirst("FullName")?.Value ?? User.Identity.Name)</strong>
+                </div>
+
+                @if (User.IsInRole("Admin"))
+                {
+                    <a asp-controller="Coordinators" asp-action="Index" class="drawer-link">
+                        <div class="icon-container"><i class="bi bi-person-badge-fill"></i> Coordinators</div>
+                        <i class="bi bi-chevron-right chevron"></i>
+                    </a>
+                    <a asp-controller="Events" asp-action="ManageEvents" class="drawer-link">
+                        <div class="icon-container"><i class="bi bi-sliders"></i> Manage Events</div>
+                        <i class="bi bi-chevron-right chevron"></i>
+                    </a>
+                    
+                    <div class="drawer-dropdown-container">
+                        <a href="javascript:void(0);" class="drawer-link" onclick="this.parentElement.classList.toggle('show-submenu')">
+                            <div class="icon-container"><i class="bi bi-file-earmark-bar-graph-fill"></i> Official Reports</div>
+                            <i class="bi bi-chevron-right chevron"></i>
+                        </a>
+                        <ul class="drawer-submenu">
+                            <li>
+                                <a asp-controller="Home" asp-action="GeneralOfficialReport" class="drawer-sub-link">
+                                    <i class="bi bi-bar-chart-line-fill me-2"></i> General Official Report
+                                </a>
+                            </li>
+                            <li>
+                                <a asp-controller="Home" asp-action="AllEventsResultsReport" class="drawer-sub-link">
+                                    <i class="bi bi-list-check me-2"></i> All Events Results Report
+                                </a>
+                            </li>
+                            <li>
+                                <a asp-controller="Home" asp-action="PendingEventsReport" class="drawer-sub-link">
+                                    <i class="bi bi-clock-history me-2"></i> Pending Events Report
+                                </a>
+                            </li>
+                            <li>
+                                <a asp-controller="Home" asp-action="DistrictQualifierReport" class="drawer-sub-link">
+                                    <i class="bi bi-award-fill me-2"></i> Regional Qualifier Report
+                                </a>
+                            </li>
+                            <li>
+                                <a asp-controller="PlayerReports" asp-action="Index" class="drawer-sub-link">
+                                    <i class="bi bi-person-badge me-2"></i> Player Medal Report
+                                </a>
+                            </li>
+                            <li>
+                                <a asp-controller="PlayerReports" asp-action="Events" class="drawer-sub-link">
+                                    <i class="bi bi-list-stars me-2"></i> Player Event Report
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                }
+                @if (User.IsInRole("Coordinator"))
+                {
+                    <a asp-controller="PlayerReports" asp-action="Index" class="drawer-link">
+                        <div class="icon-container"><i class="bi bi-person-badge"></i> Player Medal Report</div>
+                    </a>
+                    <a asp-controller="PlayerReports" asp-action="Events" class="drawer-link">
+                        <div class="icon-container"><i class="bi bi-list-stars"></i> Player Event Report</div>
+                    </a>
+                }
+                <form asp-controller="Account" asp-action="Logout" method="post" class="m-0 mt-3">
+                    <button type="submit" class="drawer-link w-100 bg-transparent text-start">
+                        <div class="icon-container"><i class="bi bi-box-arrow-right"></i> Sign Out</div>
+                    </button>
+                </form>
+            }
+            else
+            {
+                <a asp-controller="Account" asp-action="Login" class="drawer-link mt-2">
+                    <div class="icon-container"><i class="bi bi-box-arrow-in-right"></i> Login</div>
+                    <i class="bi bi-chevron-right chevron"></i>
+                </a>
+            }
+        </div>
+    </div>
+    
+    <div class="container-fluid px-0 flex-grow-1">
+        <main role="main">@RenderBody()</main>
+    </div>
+
+    <!-- Floating Navigation Bar (Mobile View Only: Horizontal Bottom on Portrait, Vertical Left on Landscape) -->
+    <nav class="mobile-bottom-nav" aria-label="Mobile Navigation">
+        @if (User.IsInRole("Admin") || User.IsInRole("Coordinator"))
+        {
+            <div id="mobileReportPanel" class="mobile-report-panel" aria-label="Official reports" hidden>
+                <div class="mobile-report-heading">Official Reports</div>
+                @if (User.IsInRole("Admin"))
+                {
+                    <a asp-controller="Home" asp-action="GeneralOfficialReport">General Official Report</a>
+                    <a asp-controller="Home" asp-action="AllEventsResultsReport">All Events Results Report</a>
+                    <a asp-controller="Home" asp-action="PendingEventsReport">Pending Events Report</a>
+                    <a asp-controller="Home" asp-action="DistrictQualifierReport">Regional Qualifier Report</a>
+                }
+                <a asp-controller="PlayerReports" asp-action="Index">Player Medal Report</a>
+                <a asp-controller="PlayerReports" asp-action="Events">Player Event Report</a>
+            </div>
+        }
+        <div class="mobile-nav-container">
+            <a asp-controller="Home" asp-action="Index" class="mobile-nav-item">
+                <i class="bi bi-house-door-fill"></i>
+                <span>Home</span>
+            </a>
+            <a asp-controller="Rankings" asp-action="Index" class="mobile-nav-item">
+                <i class="bi bi-trophy-fill"></i>
+                <span>Rankings</span>
+            </a>
+            <a asp-controller="Events" asp-action="Index" class="mobile-nav-item">
+                <i class="bi bi-calendar-event-fill"></i>
+                <span>Events</span>
+            </a>
+            <a asp-controller="Teams" asp-action="Dashboard" class="mobile-nav-item">
+                <i class="bi bi-people-fill"></i>
+                <span>Teams</span>
+            </a>
+
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                @if (User.IsInRole("Admin"))
+                {
+                    <a asp-controller="Coordinators" asp-action="Index" class="mobile-nav-item">
+                        <i class="bi bi-person-badge-fill"></i>
+                        <span>Coordinators</span>
+                    </a>
+                    <a asp-controller="Events" asp-action="ManageEvents" class="mobile-nav-item">
+                        <i class="bi bi-sliders"></i>
+                        <span>Manage</span>
+                    </a>
+                }
+                @if (User.IsInRole("Admin") || User.IsInRole("Coordinator"))
+                {
+                    <button type="button" class="mobile-nav-item border-0 bg-transparent" id="mobileReportToggle" aria-expanded="false" aria-controls="mobileReportPanel">
+                        <i class="bi bi-file-earmark-bar-graph-fill"></i>
+                        <span>Report</span>
+                    </button>
+                }
+                <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline m-0 p-0">
+                    <button type="submit" class="mobile-nav-item border-0 bg-transparent">
+                        <i class="bi bi-box-arrow-right"></i>
+                        <span>Logout</span>
+                    </button>
+                </form>
+            }
+            else
+            {
+                <a asp-controller="Account" asp-action="Login" class="mobile-nav-item">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                    <span>Login</span>
+                </a>
+            }
+        </div>
+    </nav>
+
+    <footer class="footer-custom text-center">
+        <div class="container px-3">
+            <p class="footer-text">&copy; 2026 Anthony Riel C. Diango CpE, LPT</p>
+        </div>
+    </footer>
+
+    <div class="modal fade d-print-none" id="installAppModal" tabindex="-1" aria-labelledby="installAppTitle" aria-describedby="installAppHelp" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-top: 4px solid #C8A354;">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="installAppTitle">Install ProvMeet</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img src="~/images/bohol_logo.png" alt="Provincial Meet logo" width="96" height="96" class="rounded mb-3" />
+                    <p>Add Provincial Meet to your home screen for quick access to events, results, and standings.</p>
+                    <p id="installAppHelp" class="small mb-0" style="color: #285735;">Use your browser’s menu to look for Install app or Add to Home Screen. If unavailable, open this site in Chrome, Edge, or Safari.</p>
+                    <p class="small text-muted mt-2 mb-0">An internet connection is needed for live meet data.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Not now</button>
+                    <button type="button" id="installAppButton" class="btn" style="background: #123F2D; color: #F5E3A1;" hidden>Install app</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="~/js/mobile-reports.js" asp-append-version="true" defer></script>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const currentPath = window.location.pathname.toLowerCase();
+            const mobileLinks = document.querySelectorAll('.mobile-nav-item');
+            const isLandscape = window.matchMedia("(orientation: landscape)").matches;
+            
+            mobileLinks.forEach(link => {
+                const href = link.getAttribute('href');
+                if (href && href !== '#' && href !== 'javascript:void(0);') {
+                    if (currentPath === href.toLowerCase() || (href !== '/' && currentPath.startsWith(href.toLowerCase()))) {
+                        link.classList.add('active');
+                        link.scrollIntoView({ 
+                            behavior: 'auto', 
+                            inline: isLandscape ? 'nearest' : 'center', 
+                            block: isLandscape ? 'center' : 'nearest' 
+                        });
+                    }
+                }
+            });
+        });
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

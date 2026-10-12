@@ -1,0 +1,22 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+*.exe
+*.dll
+*.pdb
+*.user
+*.lock.json
+.vs/
+.vscode/
+
+# Local credentials and ASP.NET encryption keys
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+appsettings.*.local.json
+keys/
+*.pfx
+*.p12
+*.key
+*.pem
