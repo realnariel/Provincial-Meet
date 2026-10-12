@@ -54,7 +54,7 @@
                     Sport = sportGroup.Key,
                     TotalPending = sportGroup.Count(),
                     Categories = sportGroup
-                        .GroupBy(e => string.IsNullOrWhiteSpace(e.EventCategory) ? "Uncategorized" : e.EventCategory.Trim())
+                        .GroupBy(e => string.IsNullOrWhiteSpace(e.SportCategory) ? "Uncategorized" : e.SportCategory.Trim())
                         .OrderBy(cg => GetCategoryOrder(cg.Key))
                         .ThenBy(cg => cg.Key)
                         .Select(categoryGroup => new {

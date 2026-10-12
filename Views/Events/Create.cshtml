@@ -109,8 +109,8 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label asp-for="SportCategory" class="form-label">TYPE</label>
-                            <select asp-for="SportCategory" class="form-select form-control-custom" required>
+                            <label asp-for="EventCategory" class="form-label">TYPE</label>
+                            <select asp-for="EventCategory" class="form-select form-control-custom" required>
                                 <option value="Individual">Individual</option>
                                 <option value="Team">Team</option>
                                 <option value="Demonstration">Demonstration</option>
@@ -118,14 +118,14 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label asp-for="EventCategory" class="form-label">CATEGORY</label>
-                            <select asp-for="EventCategory" class="form-select form-control-custom" required>
+                            <label asp-for="SportCategory" class="form-label">CATEGORY</label>
+                            <select asp-for="SportCategory" class="form-select form-control-custom" required>
                                 <option value="">-- Select Category --</option>
                                 <option value="Boys">Boys</option>
                                 <option value="Girls">Girls</option>
                                 <option value="Mixed">Mixed</option>
                             </select>
-                            <span asp-validation-for="EventCategory" class="text-danger"></span>
+                            <span asp-validation-for="SportCategory" class="text-danger"></span>
                         </div>
 
                         <div class="col-md-6">

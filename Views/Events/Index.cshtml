@@ -845,7 +845,7 @@
                                     <tr class="event-row" 
                                         data-title="@(ev.Title?.Trim().ToLower() ?? "")"
                                         data-sport="@(ev.SportName?.Trim() ?? "")" 
-                                        data-category="@(ev.EventCategory?.Trim() ?? "")"
+                                        data-category="@(ev.SportCategory?.Trim() ?? "")"
                                         data-division="@(ev.Division?.Trim() ?? "")" 
                                         data-status="@(ev.Status?.Trim() ?? "")" 
                                         data-is-assigned="@(isCoordinator ? "true" : "false")">

@@ -647,7 +647,9 @@
             {
                 foreach (var tally in Model)
                 {
-                    var teamName = tally.Team?.Name ?? "Unknown Team";
+                    var teamName = string.IsNullOrWhiteSpace(tally.Team?.Acronym)
+                        ? tally.Team?.Name ?? "Unknown Team"
+                        : tally.Team.Acronym.Trim();
                     var teamDivision = tally.Division;
                     @: { name: @Json.Serialize(teamName), division: @Json.Serialize(teamDivision), gold: @tally.Gold, silver: @tally.Silver, bronze: @tally.Bronze },
                 }
@@ -717,12 +719,12 @@
 
             dataList.forEach(item => {
                 const total = item.gold + item.silver + item.bronze;
-                const districtName = item.name.replace(/\bdistrict\b/ig, '').trim();
+                const teamLabel = item.name;
                 const tr = document.createElement('tr');
                 const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({
                     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
                 })[character]);
-                tr.innerHTML = [item.rank, districtName, item.gold, item.silver, item.bronze, total]
+                tr.innerHTML = [item.rank, teamLabel, item.gold, item.silver, item.bronze, total]
                     .map((value, index) => `<td class="${index === 1 ? 'text-left' : 'text-center'}">${escapeHtml(value)}</td>`)
                     .join('');
                 tbody.appendChild(tr);

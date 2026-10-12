@@ -102,10 +102,18 @@ create index if not exists prov_events_coordinator_idx
 create index if not exists prov_events_updated_idx
     on public.prov_events (updatedat desc);
 
+-- Correct provincial rows imported by an earlier version of this script,
+-- which accidentally reversed gender category and event type. Leave all
+-- congressional rows and already-correct provincial rows unchanged.
+update public.prov_events
+set sport_category = event_category,
+    event_category = sport_category
+where upper(btrim(coalesce(event_category, ''))) in ('BOYS', 'GIRLS', 'MIXED')
+  and upper(btrim(coalesce(sport_category, ''))) not in ('BOYS', 'GIRLS', 'MIXED');
+
 -- Copy the congressional event catalog without copying results, coordinators,
--- winners, or completion state. The legacy congressional table stores gender
--- category in sport_category and event type in event_category; the provincial
--- schema normalizes those two values into their correctly named columns.
+-- winners, or completion state. sport_category is Boys/Girls/Mixed;
+-- event_category is the event type (Individual/Team/etc.).
 -- Skip catalog entries already present, even if their result status changed.
 insert into public.prov_events (
     title,
@@ -119,9 +127,9 @@ insert into public.prov_events (
 select
     source.title,
     source.sport_name,
-    source.event_category,
-    source.division,
     source.sport_category,
+    source.division,
+    source.event_category,
     'Pending',
     (now() at time zone 'utc')
 from public.cong_events source
@@ -130,9 +138,9 @@ where not exists (
     from public.prov_events target
     where target.title = source.title
       and target.sport_name is not distinct from source.sport_name
-      and target.sport_category is not distinct from source.event_category
+      and target.sport_category is not distinct from source.sport_category
       and target.division = source.division
-      and target.event_category is not distinct from source.sport_category
+      and target.event_category is not distinct from source.event_category
 );
 
 create table if not exists public.prov_qualifiers (

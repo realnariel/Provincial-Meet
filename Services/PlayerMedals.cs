@@ -13,7 +13,7 @@ public static class PlayerMedals
 
     public static string Category(Event ev)
     {
-        var category = Normalize(ev.EventCategory);
+        var category = Normalize(ev.SportCategory);
         return new[] { "Boys", "Girls", "Mixed" }
             .FirstOrDefault(value => value.Equals(category, StringComparison.OrdinalIgnoreCase)) ?? "Unspecified";
     }
@@ -30,7 +30,7 @@ public static class PlayerMedals
                 if (!teamId.HasValue) return;
                 var team = teamNames.GetValueOrDefault(teamId.Value, $"Team #{teamId.Value}");
                 foreach (var name in Names(rawNames))
-                    entries.Add(new(ev.Id, ev.Title, Normalize(ev.SportName), Normalize(ev.SportCategory),
+                    entries.Add(new(ev.Id, ev.Title, Normalize(ev.SportName), Normalize(ev.EventCategory),
                         Category(ev), Normalize(ev.Division), name, team, string.Empty, medal));
             }
             Add(ev.GoldWinnerName, ev.GoldTeamId, "Gold");

@@ -2,6 +2,7 @@ using ProvMeet.Controllers;
 using ProvMeet.Data;
 using ProvMeet.Models;
 using ProvMeet.Security;
+using ProvMeet.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -19,6 +20,17 @@ Check(!CoordinatorPasswords.Verify(hashed, "wrong", out _), "incorrect password 
 Check(CoordinatorPasswords.Verify(password, password, out legacy) && legacy, "legacy login migration recognized");
 Check(!CoordinatorPasswords.Verify("$pbkdf2-sha256$600000$bad$bad", password, out _), "malformed hash rejected");
 Check(new Coordinator { Password = CoordinatorPasswords.Hash("coordinator") }.NeedsPasswordChange, "hashed default still requires change");
+
+var categoryEvent = new Event
+{
+    Id = 99, Title = "Sample Event", SportName = "Athletics",
+    SportCategory = "Girls", EventCategory = "Individual", Division = "Secondary",
+    GoldTeamId = 1, GoldWinnerName = "Sample Athlete"
+};
+Check(PlayerMedals.Category(categoryEvent) == "Girls", "participant category comes from sport_category");
+var categoryEntry = PlayerMedals.Build(new[] { categoryEvent }, new[] { new Team { Id = 1, Name = "CD 1" } }).Single();
+Check(categoryEntry.Category == "Girls" && categoryEntry.SportType == "Individual",
+    "player reports keep category and event type in their correct columns");
 
 using var connection = new SqliteConnection("Data Source=:memory:");
 connection.Open();
@@ -38,6 +50,16 @@ void SetUser(Controller controller, string role = "Coordinator", string? id = "1
     controller.ControllerContext = new ControllerContext { HttpContext = context };
     controller.TempData = new TempDataDictionary(context, new MemoryTempData());
 }
+var eventAdmin = new EventsController(db);
+SetUser(eventAdmin, "Admin");
+Check(await eventAdmin.Create(new Event
+{
+    Title = "Category Mapping Check", SportName = "Athletics", SportCategory = "Girls",
+    EventCategory = "Individual", Division = "Secondary", Status = "Pending"
+}) is RedirectToActionResult, "add event accepts category and type in their intended fields");
+var createdEvent = db.Events.Single(e => e.Title == "Category Mapping Check");
+Check(createdEvent.SportCategory == "Girls" && createdEvent.EventCategory == "Individual",
+    "add event saves category to sport_category and type to event_category");
 var delegation = new DelegationController(db);
 SetUser(delegation);
 Check(await delegation.SaveQualifier(new EventQualifier { Id = other.Id, EventId = 1, ParticipantName = "Attack" }) is NotFoundObjectResult, "cross-event ID substitution rejected");

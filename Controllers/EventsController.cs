@@ -77,11 +77,11 @@ namespace ProvMeet.Controllers
             return View();
         }
 
-        private void ValidateEventCategory(Event ev)
+        private void ValidateSportCategory(Event ev)
         {
-            if (ev.EventCategory is not ("Boys" or "Girls" or "Mixed"))
+            if (ev.SportCategory is not ("Boys" or "Girls" or "Mixed"))
             {
-                ModelState.AddModelError(nameof(Event.EventCategory), "Select Boys, Girls, or Mixed.");
+                ModelState.AddModelError(nameof(Event.SportCategory), "Select Boys, Girls, or Mixed.");
             }
         }
 
@@ -90,7 +90,7 @@ namespace ProvMeet.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([Bind("Title,SportName,SportCategory,EventCategory,Division,Status,CoordinatorId")] Event ev)
         {
-            ValidateEventCategory(ev);
+            ValidateSportCategory(ev);
             if (ModelState.IsValid)
             {
                 ev.CreatedAt = DateTime.UtcNow;
@@ -132,7 +132,7 @@ namespace ProvMeet.Controllers
         {
             if (id != ev.Id) return NotFound();
 
-            ValidateEventCategory(ev);
+            ValidateSportCategory(ev);
             if (ModelState.IsValid)
             {
                 var existingEvent = await _context.Events.FindAsync(id);
