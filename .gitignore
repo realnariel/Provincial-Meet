@@ -8,6 +8,10 @@
 *.lock.json
 .vs/
 .vscode/
+!.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 
 # Local credentials and ASP.NET encryption keys
 .env
@@ -20,3 +24,9 @@ keys/
 *.p12
 *.key
 *.pem
+
+# Standalone React application
+react-app/node_modules/
+react-app/dist/
+react-app/.env.local
+react-app/*.tsbuildinfo
