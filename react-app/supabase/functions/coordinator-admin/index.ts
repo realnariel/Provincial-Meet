@@ -27,7 +27,7 @@ function json(body: unknown, status = 200) {
 function validPassword(value: unknown): value is string {
   return (
     typeof value === "string" &&
-    value.length >= 12 &&
+    value.length >= 6 &&
     value.length <= 128 &&
     value !== "coordinator"
   );
@@ -58,7 +58,7 @@ edgeRuntime.serve(async (request) => {
     return json({ error: "Invalid session" }, 401);
   const { data: profile, error: profileError } = await admin
     .from("prov_coordinators")
-    .select("id,username,is_admin,must_change_password")
+    .select("id,username,is_admin")
     .eq("auth_user_id", caller.user.id)
     .single();
   if (profileError || !profile)
@@ -73,25 +73,7 @@ edgeRuntime.serve(async (request) => {
     return json({ error: "Invalid request" }, 400);
   }
 
-  if (body.action === "finish-password-change") {
-    if (!profile.must_change_password)
-      return json({ error: "Password change is not required" }, 400);
-    if (!validPassword(body.password))
-      return json({ error: "Use a new password of 12–128 characters" }, 400);
-    const { error: passwordError } = await admin.auth.admin.updateUserById(
-      caller.user.id,
-      { password: body.password },
-    );
-    if (passwordError) return json({ error: passwordError.message }, 400);
-    const { error: flagError } = await admin
-      .from("prov_coordinators")
-      .update({ must_change_password: false })
-      .eq("id", profile.id);
-    if (flagError) return json({ error: flagError.message }, 500);
-    return json({ ok: true });
-  }
-
-  if (!profile.is_admin || profile.must_change_password)
+  if (!profile.is_admin)
     return json({ error: "Administrator access required" }, 403);
   if (body.action === "create") {
     const username =
@@ -109,7 +91,7 @@ edgeRuntime.serve(async (request) => {
       return json(
         {
           error:
-            "Valid username, full name, and a 12–128 character temporary password are required",
+            "Valid username, full name, and a 6–128 character temporary password are required",
         },
         400,
       );
@@ -130,7 +112,7 @@ edgeRuntime.serve(async (request) => {
       is_admin: body.isAdmin === true,
       auth_user_id: created.user.id,
       passwordhash: "",
-      must_change_password: true,
+      must_change_password: false,
     });
     if (rowError) {
       await admin.auth.admin.deleteUser(created.user.id);
@@ -150,7 +132,7 @@ edgeRuntime.serve(async (request) => {
     return json({ error: "Coordinator not found" }, 404);
   if (body.action === "reset-password") {
     if (!validPassword(body.password))
-      return json({ error: "Use a 12–128 character temporary password" }, 400);
+      return json({ error: "Use a 6–128 character temporary password" }, 400);
     const { error: resetError } = await admin.auth.admin.updateUserById(
       target.auth_user_id,
       { password: body.password },
@@ -158,7 +140,7 @@ edgeRuntime.serve(async (request) => {
     if (resetError) return json({ error: resetError.message }, 400);
     const { error: rowError } = await admin
       .from("prov_coordinators")
-      .update({ must_change_password: true })
+      .update({ must_change_password: false })
       .eq("id", id);
     if (rowError) return json({ error: rowError.message }, 500);
     return json({ ok: true });

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AppData } from "./App";
 import { loadQualifiers } from "./data";
+import { MEET_DATE } from "./meet-config";
 import {
   compareMedals,
   DIVISIONS,
@@ -521,7 +522,7 @@ export function ReportsPage({
             </h2>
             <p className="report-areas">ELEMENTARY · SECONDARY · PARAGAMES</p>
             <p className="report-theme">“Strong Together. Greater Tomorrow”</p>
-            <p className="report-date">Schedule to be announced</p>
+            <p className="report-date">{MEET_DATE}</p>
             <p className="report-values">
               DISCIPLINE · SPORTSMANSHIP · EXCELLENCE · UNITY
             </p>

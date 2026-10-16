@@ -4,8 +4,9 @@ import { loadPublicData } from "./data";
 import { isConfigured, supabase } from "./supabase";
 import type { Coordinator, MedalRow, MeetEvent, Team } from "./types";
 import { HomePage, RankingsPage, EventsPage, TeamsPage } from "./PublicPages";
-import { LoginPage, ManagePage, QualifiersPage } from "./StaffPages";
-import { ReportsPage } from "./ReportsPage";
+import { LoginPage, ManagePage } from "./StaffPages";
+import { CongMeetReportsPage } from "./CongMeetReportsPage";
+import { DelegationPage, OfficialScoringPage } from "./WorkflowPages";
 
 export interface AppData {
   teams: Team[];
@@ -26,15 +27,32 @@ export default function App() {
   const [profile, setProfile] = useState<Coordinator | null>(null);
   const [loading, setLoading] = useState(isConfigured);
   const [error, setError] = useState("");
+  const [authNotice, setAuthNotice] = useState("");
   const [reportOpen, setReportOpen] = useState(false);
+  const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
   const mobileNavRef = useRef<HTMLElement>(null);
+  const desktopMenuCloseRef = useRef<HTMLButtonElement>(null);
 
   const navigate = useCallback((to: string) => {
     window.history.pushState(null, "", to);
     setPath(currentPath());
     setReportOpen(false);
+    setDesktopMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "instant" });
   }, []);
+
+  const signOut = useCallback(async () => {
+    if (!supabase) return;
+    const { error: signOutError } = await supabase.auth.signOut();
+    if (signOutError) {
+      setError(`Sign-out failed: ${signOutError.message}`);
+      return;
+    }
+    setSession(null);
+    setProfile(null);
+    setAuthNotice("You have signed out successfully.");
+    navigate("/");
+  }, [navigate]);
 
   const refresh = useCallback(async () => {
     if (!supabase) return;
@@ -90,6 +108,12 @@ export default function App() {
   }, [refresh]);
 
   useEffect(() => {
+    if (!authNotice) return;
+    const timer = window.setTimeout(() => setAuthNotice(""), 3500);
+    return () => window.clearTimeout(timer);
+  }, [authNotice]);
+
+  useEffect(() => {
     if (!reportOpen) return;
     const closeOutside = (event: PointerEvent) => {
       if (event.target instanceof Node && !mobileNavRef.current?.contains(event.target))
@@ -107,22 +131,24 @@ export default function App() {
   }, [reportOpen]);
 
   useEffect(() => {
+    if (!desktopMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    desktopMenuCloseRef.current?.focus();
+    const closeEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setDesktopMenuOpen(false);
+    };
+    document.addEventListener("keydown", closeEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeEscape);
+    };
+  }, [desktopMenuOpen]);
+
+  useEffect(() => {
     const item = mobileNavRef.current?.querySelector<HTMLElement>(".mobile-nav-item.active");
     item?.scrollIntoView({ behavior: "auto", block: "nearest", inline: "nearest" });
   }, [path]);
-
-  const link = (to: string, label: string) => (
-    <a
-      href={to}
-      className={path === to ? "nav-link active" : "nav-link"}
-      onClick={(event) => {
-        event.preventDefault();
-        navigate(to);
-      }}
-    >
-      {label}
-    </a>
-  );
 
   const mobileLink = (to: string, label: string, icon: string, active = path === to) => (
     <a href={to} className={active ? "mobile-nav-item active" : "mobile-nav-item"}
@@ -138,11 +164,23 @@ export default function App() {
       onClick={(event) => { event.preventDefault(); navigate(to); }}>{label}</a>
   );
 
-  const admin = Boolean(profile?.is_admin && !profile.must_change_password);
-  const staff = Boolean(profile && !profile.must_change_password);
+  const drawerLink = (to: string, label: string, icon: string, active = path === to) => (
+    <a href={to} className={active ? "desktop-drawer-link active" : "desktop-drawer-link"}
+      aria-current={active ? "page" : undefined}
+      onClick={(event) => { event.preventDefault(); navigate(to); }}>
+      <i className={`bi ${icon}`} aria-hidden="true" />
+      <span>{label}</span>
+      <i className="bi bi-chevron-right drawer-chevron" aria-hidden="true" />
+    </a>
+  );
+
+  const admin = Boolean(profile?.is_admin);
+  const staff = Boolean(profile);
   const authRequired =
     path.startsWith("/manage") ||
     path.startsWith("/qualifiers") ||
+    path.startsWith("/scoring") ||
+    path.startsWith("/delegation") ||
     path.startsWith("/reports");
 
   let content: React.ReactNode;
@@ -170,7 +208,7 @@ export default function App() {
   else if (authRequired && !staff)
     content = (
       <section className="panel state-message">
-        <h1>Staff sign-in required</h1>
+        <h1>Sign-in required</h1>
         <p>Sign in to manage events and view staff reports.</p>
         <button onClick={() => navigate("/login")}>Sign in</button>
       </section>
@@ -179,13 +217,43 @@ export default function App() {
   else if (path === "/rankings")
     content = <RankingsPage data={data} refresh={refresh} />;
   else if (path === "/events")
-    content = <EventsPage data={data} navigate={navigate} />;
+    content = (
+      <EventsPage
+        data={data}
+        profile={profile}
+        admin={admin}
+        navigate={navigate}
+      />
+    );
+  else if (path.startsWith("/scoring/"))
+    content = (
+      <OfficialScoringPage
+        data={data}
+        eventId={Number(path.split("/")[2])}
+        profile={profile!}
+        refresh={refresh}
+        navigate={navigate}
+      />
+    );
+  else if (path.startsWith("/delegation/"))
+    content = (
+      <DelegationPage
+        data={data}
+        eventId={Number(path.split("/")[2])}
+        profile={profile!}
+        navigate={navigate}
+      />
+    );
   else if (path === "/teams" || path.startsWith("/teams/"))
     content = <TeamsPage data={data} path={path} navigate={navigate} />;
   else if (path === "/login")
     content = <LoginPage profile={profile} navigate={navigate} />;
-  else if (path === "/manage" || path === "/manage/coordinators" || path === "/manage/assignments")
-    content = (
+  else if (
+    path === "/manage" ||
+    path === "/manage/coordinators" ||
+    path === "/manage/assignments"
+  )
+    content = admin ? (
       <ManagePage
         data={data}
         profile={profile!}
@@ -194,19 +262,24 @@ export default function App() {
         refresh={refresh}
         navigate={navigate}
       />
+    ) : (
+      <section className="panel state-message">
+        <h1>Administrator access required</h1>
+        <button onClick={() => navigate("/events")}>View events</button>
+      </section>
     );
   else if (path.startsWith("/qualifiers/"))
     content = (
-      <QualifiersPage
+      <DelegationPage
         data={data}
+        eventId={Number(path.split("/")[2])}
         profile={profile!}
-        path={path}
         navigate={navigate}
       />
     );
   else if (path.startsWith("/reports"))
     content = (
-      <ReportsPage data={data} path={path} admin={admin} navigate={navigate} />
+      <CongMeetReportsPage data={data} path={path} admin={admin} navigate={navigate} />
     );
   else
     content = (
@@ -237,30 +310,73 @@ export default function App() {
               <strong>Bohol Provincial Meet</strong>
             </span>
           </a>
-          <nav className="main-nav" aria-label="Main navigation">
-            {link("/", "Home")}
-            {link("/rankings", "Rankings")}
-            {link("/events", "Events")}
-            {link("/teams", "Teams")}
-            {staff && link("/reports/general", "Reports")}
-            {staff && link("/manage", "Manage")}
-            {profile ? (
-              <button
-                className="nav-button"
-                onClick={async () => {
-                  await supabase?.auth.signOut();
-                  navigate("/");
-                }}
-              >
-                Sign out
-              </button>
-            ) : (
-              link("/login", "Staff sign-in")
-            )}
-          </nav>
+          <button type="button" className="desktop-menu-toggle"
+            aria-label="Open menu" aria-expanded={desktopMenuOpen}
+            aria-controls="desktopMenuDrawer"
+            onClick={() => setDesktopMenuOpen(true)}>
+            <i className="bi bi-list" aria-hidden="true" />
+          </button>
         </div>
       </header>
+      {desktopMenuOpen && (
+        <div className="desktop-menu-layer">
+          <button type="button" className="desktop-menu-scrim" aria-label="Close menu"
+            onClick={() => setDesktopMenuOpen(false)} />
+          <aside className="desktop-menu-drawer" id="desktopMenuDrawer"
+            role="dialog" aria-modal="true" aria-label="Main menu">
+            <div className="desktop-menu-heading">
+              <h2><i className="bi bi-grid-fill" aria-hidden="true" /> Menu</h2>
+              <button type="button" ref={desktopMenuCloseRef} aria-label="Close menu"
+                onClick={() => setDesktopMenuOpen(false)}>
+                <i className="bi bi-x-lg" aria-hidden="true" />
+              </button>
+            </div>
+            <nav className="desktop-drawer-nav" aria-label="Main menu links">
+              {drawerLink("/", "Home", "bi-house-door-fill")}
+              {drawerLink("/rankings", "Rankings", "bi-trophy-fill")}
+              {drawerLink("/events", "Events", "bi-calendar-event-fill", path === "/events" || path.startsWith("/scoring") || path.startsWith("/delegation"))}
+              {drawerLink("/teams", "Teams", "bi-people-fill", path.startsWith("/teams"))}
+
+              <div className="desktop-menu-section">
+                <span><i className="bi bi-shield-lock-fill" aria-hidden="true" /> Account</span>
+                {profile && <p>Logged in as:<strong>{profile.fullname}</strong></p>}
+              </div>
+
+              {admin && drawerLink("/manage/coordinators", "Coordinators", "bi-person-badge-fill")}
+              {admin && drawerLink("/manage", "Manage Events", "bi-sliders", path === "/manage" || path === "/manage/assignments")}
+              {staff && <div className="desktop-report-group">
+                <div className={path.startsWith("/reports") ? "desktop-drawer-link active desktop-report-label" : "desktop-drawer-link desktop-report-label"}>
+                  <i className="bi bi-file-earmark-bar-graph-fill" aria-hidden="true" />
+                  <span>Official Reports</span>
+                  <i className="bi bi-chevron-down drawer-chevron" aria-hidden="true" />
+                </div>
+                <div className="desktop-report-links" aria-label="Official report pages">
+                  {admin && reportLink("/reports/general", "General Official Report")}
+                  {admin && reportLink("/reports/results", "All Events Results Report")}
+                  {admin && reportLink("/reports/pending", "Pending Events Report")}
+                  {reportLink("/reports/qualifiers", "Regional Qualifier Report")}
+                  {reportLink("/reports/players", "Player Medal Report")}
+                  {reportLink("/reports/player-events", "Player Event Report")}
+                </div>
+              </div>}
+              {profile ? (
+                <button type="button" className="desktop-drawer-link desktop-signout"
+                  onClick={() => void signOut()}>
+                  <i className="bi bi-box-arrow-right" aria-hidden="true" />
+                  <span>Sign out</span>
+                  <i className="bi bi-chevron-right drawer-chevron" aria-hidden="true" />
+                </button>
+              ) : drawerLink("/login", "Sign in", "bi-box-arrow-in-right")}
+            </nav>
+          </aside>
+        </div>
+      )}
       <main className="main-container">
+        {authNotice && (
+          <div className="alert success" role="status">
+            {authNotice}
+          </div>
+        )}
         {error && (
           <div className="alert error" role="alert">
             {error} <button onClick={() => void refresh()}>Retry</button>
@@ -269,7 +385,7 @@ export default function App() {
         {content}
       </main>
       <footer className="site-footer">
-        © 2026 Anthony Riel C. Diango CpE, LPT · Bohol Provincial Athletic Meet
+        © 2026 Anthony Riel C. Diango CpE, LPT
       </footer>
       <nav className="mobile-bottom-nav" aria-label="Mobile navigation" ref={mobileNavRef}>
         {staff && <div className="mobile-report-panel" id="mobileReportPanel"
@@ -285,10 +401,10 @@ export default function App() {
         <div className="mobile-nav-container">
           {mobileLink("/", "Home", "bi-house-door-fill")}
           {mobileLink("/rankings", "Rankings", "bi-trophy-fill")}
-          {mobileLink("/events", "Events", "bi-calendar-event-fill")}
+          {mobileLink("/events", "Events", "bi-calendar-event-fill", path === "/events" || path.startsWith("/scoring") || path.startsWith("/delegation"))}
           {mobileLink("/teams", "Teams", "bi-people-fill", path.startsWith("/teams"))}
           {admin && mobileLink("/manage/coordinators", "Coordinators", "bi-person-badge-fill")}
-          {staff && mobileLink("/manage", "Manage", "bi-sliders", path === "/manage" || path === "/manage/assignments")}
+          {admin && mobileLink("/manage", "Manage", "bi-sliders", path === "/manage" || path === "/manage/assignments")}
           {staff && <button type="button"
             className={path.startsWith("/reports") ? "mobile-nav-item active" : "mobile-nav-item"}
             aria-expanded={reportOpen} aria-controls="mobileReportPanel"
@@ -296,7 +412,7 @@ export default function App() {
             <i className="bi bi-file-earmark-bar-graph-fill" aria-hidden="true" /><span>Report</span>
           </button>}
           {profile ? <button type="button" className="mobile-nav-item"
-            onClick={async () => { await supabase?.auth.signOut(); navigate("/"); }}>
+            onClick={() => void signOut()}>
             <i className="bi bi-box-arrow-right" aria-hidden="true" /><span>Logout</span>
           </button> : mobileLink("/login", "Login", "bi-box-arrow-in-right")}
         </div>

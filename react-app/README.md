@@ -3,9 +3,9 @@
 This is a separate, static React/Vite application under the existing repository.
 The ASP.NET MVC files and their current Supabase database remain untouched.
 The new app uses the **same `prov_*` table and view names** as the MVC app.
-`prov_coordinators` adds `auth_user_id` and `must_change_password` for Supabase
-Auth; its old `passwordhash` column is retained but never exposed or used by
-the React application.
+`prov_coordinators` adds `auth_user_id` for Supabase Auth; its old
+`passwordhash` column is retained but never exposed or used by the React
+application. Password changes are performed only by an administrator.
 
 ## When the new Supabase project is available
 
@@ -17,7 +17,7 @@ the React application.
    qualifier, and cron tables returned HTTP 401.
 2. Disable public sign-up in Supabase Auth settings. Create the first Auth user
    in the dashboard using email `admin@accounts.provmeet.example.com`, a unique
-   temporary password of at least 12 characters, and mark the email confirmed.
+   temporary password of at least 6 characters, and mark the email confirmed.
    The email is an internal username alias; it does not need to receive mail.
 3. Run this in the **new** project's SQL Editor to associate that Auth user
    with the admin profile:
@@ -25,13 +25,13 @@ the React application.
    ```sql
    insert into public.prov_coordinators
      (username, fullname, is_admin, auth_user_id, must_change_password)
-   select 'admin', 'Provincial Meet Administrator', true, id, true
+   select 'admin', 'Provincial Meet Administrator', true, id, false
    from auth.users
    where email = 'admin@accounts.provmeet.example.com';
    ```
 
-   Check that exactly one row was inserted. The admin will change the temporary
-   password at first sign-in.
+   Check that exactly one row was inserted. Password changes are performed by
+   an administrator from the Coordinators screen.
 4. Deploy the `supabase/functions/coordinator-admin` Edge Function **only to
    the new project**. It uses the project's server-side service-role credential
    from the Supabase Function environment; do not put that key in this app.
@@ -43,6 +43,15 @@ the React application.
    also run `supabase/upgrade-atomic-assignments.sql` in this **new** project.
    It creates one admin-only batch function; it does not alter event data.
    The React Assignments button requires this upgrade.
+   Run `supabase/upgrade-result-workflows.sql` as well on an existing project.
+   It repairs the authenticated publish/clear-result RPCs without changing any
+   saved event, result, team, coordinator, or qualifier rows.
+   Run `supabase/upgrade-admin-only-passwords.sql` to remove the first-login
+   password-change requirement from existing accounts. Password resets are
+   then performed only by an administrator from the Coordinators screen.
+   Run `supabase/upgrade-report-parity.sql` so signed-in coordinators can read
+   the consolidated Regional Qualifier and Participant reports. It changes
+   read access only; result and delegation writes remain event-scoped.
 5. The congressional catalog was exported with a read-only transaction and
    packaged in `supabase/import-congressional-catalog.sql`. Review
    `supabase/catalog-category-audit.md`, then run the import SQL in the
@@ -65,6 +74,15 @@ the React application.
 Static hosting must rewrite unknown paths such as `/events` and `/reports/general`
 to `index.html`. Keep the MVC site available until the new app has been tested
 against the new database.
+
+## Render deployment
+
+The repository-root `render.yaml` configures this app as a Render Static Site.
+It uses `react-app` as the root directory, runs `npm ci && npm run build`,
+publishes `dist`, and rewrites `/*` to `/index.html` for direct navigation to
+React routes. During Blueprint creation, enter `VITE_SUPABASE_URL` and
+`VITE_SUPABASE_PUBLISHABLE_KEY` using the same browser-safe values from the
+local `.env.local` file. Do not add the service-role key to Render.
 
 The first dashboard-created admin accounts used real email addresses rather
 than the app's synthetic username addresses. The sign-in field accepts either

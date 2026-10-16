@@ -33,7 +33,10 @@
   "decisions": [
     "Preserve the existing green-and-gold meet identity while replacing congressional-specific branding with Bohol provincial terminology.",
     "Represent every delegation once as a team; derive Elementary, Secondary, and Paragames standings from event divisions.",
-    "Match the MVC floating mobile dock: icon-and-label links, horizontally scrollable portrait bar, left-side landscape dock, and a report popover; do not use a mobile hamburger menu."
+    "Match the MVC navigation patterns: use a right-side hamburger drawer on desktop, and retain the icon-and-label floating dock on mobile without a mobile hamburger.",
+    "Match the Events page reference with four desktop summary cards and table-style records, plus two mobile summary cards, division pills, collapsible filters, and dark green event cards with gold accents.",
+    "Use the CongMeet MVC reports as the source of truth for report configuration, grouping, certification, signatories, print layouts, and Excel exports.",
+    "Keep the desktop right-side menu compact and content-fitted, with a neutral translucent scrim that leaves the current page recognizable behind the drawer."
   ],
   "evidence": [],
   "generatedAt": "2026-10-12T07:03:09.796Z"

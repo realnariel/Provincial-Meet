@@ -31,7 +31,7 @@ create table if not exists public.prov_coordinators (
   is_admin boolean not null default false,
   created_at timestamptz not null default now(),
   auth_user_id uuid unique references auth.users(id) on delete cascade,
-  must_change_password boolean not null default true
+  must_change_password boolean not null default false
 );
 create unique index if not exists prov_coordinators_username_unique_ci
   on public.prov_coordinators (lower(btrim(username)));
@@ -112,7 +112,7 @@ returns boolean language sql stable security definer set search_path = '' as $$
   select exists (
     select 1 from public.prov_coordinators c
     where c.auth_user_id = (select auth.uid())
-      and c.is_admin and not c.must_change_password
+      and c.is_admin
   );
 $$;
 create or replace function private.prov_can_manage_event(p_event_id integer)
@@ -121,7 +121,6 @@ returns boolean language sql stable security definer set search_path = '' as $$
     select 1 from public.prov_events e
     join public.prov_coordinators c on c.id = e.coordinatorid
     where e.id = p_event_id and c.auth_user_id = (select auth.uid())
-      and not c.must_change_password
   );
 $$;
 revoke all on function private.prov_is_admin() from public;
@@ -188,6 +187,10 @@ create policy prov_coordinators_self_or_admin_read on public.prov_coordinators f
   using (auth_user_id = (select auth.uid()) or (select private.prov_is_admin()));
 create policy prov_qualifiers_managed_read on public.prov_qualifiers for select to authenticated
   using (private.prov_can_manage_event(event_id));
+-- All signed-in meet staff may read the consolidated qualifier reports. Write
+-- access remains limited to an administrator or the event's coordinator.
+create policy prov_qualifiers_staff_report_read on public.prov_qualifiers for select to authenticated
+  using (true);
 create policy prov_qualifiers_managed_insert on public.prov_qualifiers for insert to authenticated
   with check (private.prov_can_manage_event(event_id));
 create policy prov_qualifiers_managed_update on public.prov_qualifiers for update to authenticated
@@ -197,7 +200,9 @@ create policy prov_qualifiers_managed_delete on public.prov_qualifiers for delet
   using (private.prov_can_manage_event(event_id));
 
 -- One transaction for publishing a result and importing gold winners as
--- qualifiers, matching the MVC workflow. SECURITY INVOKER retains RLS checks.
+-- qualifiers, matching the MVC workflow. The function performs its own
+-- authorization check before using definer rights. This keeps the operation
+-- atomic without depending on several nested RLS evaluations.
 create or replace function public.prov_publish_result(
   p_event_id integer,
   p_gold_team_id integer,
@@ -206,7 +211,7 @@ create or replace function public.prov_publish_result(
   p_gold_winner_name text,
   p_silver_winner_name text,
   p_bronze_winner_name text
-) returns void language plpgsql security invoker set search_path = '' as $$
+) returns void language plpgsql security definer set search_path = '' as $$
 declare
   v_title text;
   v_team_name text;
@@ -232,8 +237,13 @@ begin
   select name into v_team_name from public.prov_teams where id = p_gold_team_id;
   v_gender := case when v_title ilike '%boys%' then 'M' when v_title ilike '%girls%' then 'W' else null end;
   if v_team_name is not null then
-    for v_name in select initcap(btrim(x)) from regexp_split_to_table(coalesce(p_gold_winner_name, ''), E'[\\r\\n]+') x
-      where btrim(x) <> '' loop
+    for v_name in
+      select initcap(btrim(value))
+      from regexp_split_to_table(
+        coalesce(p_gold_winner_name, ''), E'[\\r\\n]+'
+      ) as names(value)
+      where btrim(value) <> ''
+    loop
       update public.prov_qualifiers set participant_name = v_name, team = v_team_name,
         role = 'Athlete', gender = v_gender, updated_by = auth.uid(), updated_at = now() at time zone 'utc'
       where event_id = p_event_id and lower(participant_name) = lower(v_name);
@@ -247,7 +257,7 @@ end;
 $$;
 
 create or replace function public.prov_clear_result(p_event_id integer)
-returns void language plpgsql security invoker set search_path = '' as $$
+returns void language plpgsql security definer set search_path = '' as $$
 begin
   if not private.prov_can_manage_event(p_event_id) then
     raise exception 'Not permitted to clear this event';

@@ -306,11 +306,46 @@ h4 {
   font-weight: 800;
 }
 .poster-countdown {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55em;
+  min-width: 30%;
   padding: 1% 3%;
   border: 2px solid var(--poster-gold);
   border-radius: 18px;
   background: linear-gradient(125deg, #285735, #002719);
   color: #fff4c2;
+}
+.poster-countdown > i {
+  color: var(--cc-gold-light);
+  font-size: 1.55em;
+}
+.poster-countdown-content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
+  line-height: 1;
+}
+.poster-days {
+  color: #fff4c2;
+  font-size: 1.55em;
+  font-weight: 900;
+}
+.poster-days-caption {
+  color: #fff;
+  font-size: 0.55em;
+  font-weight: 900;
+  line-height: 1.05;
+  text-align: left;
+  text-transform: uppercase;
+}
+.poster-countdown-value {
+  color: #fff4c2;
+  font-size: 0.9em;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 .poster-sports {
   display: flex;
@@ -526,7 +561,13 @@ h4 {
   text-decoration: none;
 }
 .btn-glass span {
+  display: inline-grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
   font-size: 1.4rem;
+  line-height: 1;
 }
 .home-latest {
   margin-top: 1.5rem;
@@ -1481,5 +1522,57 @@ h4 {
   }
   .report-general .report-section {
     break-inside: avoid;
+  }
+}
+
+/* Keep the Events reference layout authoritative over legacy card rules. */
+.events-page .events-filter-grid {
+  margin: 0 0 1.1rem;
+}
+.events-page .event-card {
+  padding: 0;
+  border-left: 0;
+}
+.events-page .event-card h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+@media (max-width: 760px) {
+  .events-page .desktop-events-summary {
+    display: none;
+  }
+  .events-page .mobile-events-summary {
+    display: grid;
+  }
+  .events-page .event-card,
+  .events-page .event-card:nth-child(even) {
+    padding: 0;
+    border-left: 6px solid #d4a842;
+  }
+  .events-page .event-card h3 {
+    color: #f4db8e;
+    font-size: 1.03rem;
+  }
+  .events-page .events-filter-grid {
+    margin-top: -0.45rem;
+  }
+  .events-page .event-actions {
+    padding-top: 0.85rem !important;
+    border-top: 1px dashed #ffffff24;
+  }
+  .events-page .event-actions .button-outline {
+    min-height: 58px;
+    border: 2px solid #d4a842 !important;
+    border-radius: 999px;
+    background: linear-gradient(100deg, #2d7048, #0c432f) !important;
+    color: #dcb658 !important;
+    box-shadow:
+      inset 0 1px 3px #ffffff2b,
+      0 3px 8px #092d2040;
+    font-size: 0.9rem;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
   }
 }

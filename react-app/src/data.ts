@@ -153,6 +153,29 @@ export async function removeQualifier(id: string) {
   if (error) throw error;
 }
 
+export async function saveQualifiers(qualifiers: Qualifier[]) {
+  if (!qualifiers.length) return;
+  const db = requireSupabase();
+  const { data: userData } = await db.auth.getUser();
+  const updatedAt = new Date().toISOString();
+  const { error } = await db.from("prov_qualifiers").upsert(
+    qualifiers.map((item) => ({
+      id: item.id,
+      event_id: item.event_id,
+      participant_name: item.participant_name.trim(),
+      role: item.role || "Athlete",
+      team: item.team || null,
+      specific_district: item.specific_district || null,
+      school: item.school || null,
+      gender: item.gender || null,
+      tshirt_size: item.tshirt_size || null,
+      updated_by: userData.user?.id ?? null,
+      updated_at: updatedAt,
+    })),
+  );
+  if (error) throw error;
+}
+
 export async function bulkAddQualifiers(
   eventId: number,
   names: string[],

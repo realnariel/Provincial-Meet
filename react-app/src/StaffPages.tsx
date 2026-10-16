@@ -3,14 +3,12 @@ import type { AppData } from "./App";
 import {
   bulkAddQualifiers,
   bulkDeleteQualifiers,
-  clearResult,
   loadCoordinators,
   loadQualifiers,
   removeEvent,
   removeQualifier,
   saveEvent,
   saveQualifier,
-  saveResult,
 } from "./data";
 import { requireSupabase, usernameEmail } from "./supabase";
 import {
@@ -34,7 +32,28 @@ const blankEvent = {
 };
 
 function message(cause: unknown) {
-  return cause instanceof Error ? cause.message : "The operation failed.";
+  if (cause instanceof Error) return cause.message;
+  if (cause && typeof cause === "object") {
+    const problem = cause as {
+      message?: unknown;
+      details?: unknown;
+      hint?: unknown;
+      code?: unknown;
+    };
+    const parts = [problem.message, problem.details, problem.hint]
+      .filter((value): value is string =>
+        typeof value === "string" && value.trim().length > 0,
+      )
+      .map((value) => value.trim());
+    if (parts.length) {
+      const code =
+        typeof problem.code === "string" && problem.code.trim()
+          ? ` (${problem.code.trim()})`
+          : "";
+      return `${[...new Set(parts)].join(" ")}${code}`;
+    }
+  }
+  return "The operation failed.";
 }
 function signInError(error: {
   code?: string;
@@ -63,11 +82,13 @@ export function LoginPage({
 }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  useEffect(() => {
+    if (!profile) return;
+    const timer = window.setTimeout(() => navigate("/"), 1400);
+    return () => window.clearTimeout(timer);
+  }, [profile, navigate]);
   async function signIn(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
@@ -86,116 +107,47 @@ export function LoginPage({
       setBusy(false);
     }
   }
-  async function changePassword(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      if (newPassword.length < 12)
-        throw new Error("Use at least 12 characters for your new password.");
-      if (newPassword !== confirm) throw new Error("Passwords do not match.");
-      if (newPassword === "coordinator")
-        throw new Error("Choose a different password.");
-      const db = requireSupabase();
-      const { data, error: finalizeError } = await db.functions.invoke(
-        "coordinator-admin",
-        { body: { action: "finish-password-change", password: newPassword } },
-      );
-      if (finalizeError) throw finalizeError;
-      if (data?.error) throw new Error(data.error);
-      setSuccess("Password updated. Please sign in again.");
-      await db.auth.signOut();
-      setNewPassword("");
-      setConfirm("");
-    } catch (cause) {
-      setError(message(cause));
-    } finally {
-      setBusy(false);
-    }
-  }
-  if (profile && !profile.must_change_password)
+  if (profile)
     return (
       <section className="panel auth-card">
         <h1>Signed in</h1>
-        <p>Welcome, {profile.fullname}.</p>
-        <button onClick={() => navigate("/manage")}>
-          Open event management
-        </button>
+        <div className="alert success" role="status">
+          Welcome, {profile.fullname}. Redirecting to Home…
+        </div>
       </section>
     );
   return (
     <section className="panel auth-card">
-      <span className="eyebrow dark">Staff access</span>
-      <h1>
-        {profile?.must_change_password
-          ? "Change your password"
-          : "Username sign-in"}
-      </h1>
-      <p>
-        {profile?.must_change_password
-          ? "Set a private password before managing meet data."
-          : "Sign in using your assigned username, or the email address used to create your account."}
-      </p>
+      <span className="eyebrow dark">Secure access</span>
+      <h1>Sign in</h1>
+      <p>Sign in using your assigned username, or the email address used to create your account.</p>
       {error && (
         <div className="alert error" role="alert">
           {error}
         </div>
       )}
-      {success && (
-        <div className="alert success" role="status">
-          {success}
-        </div>
-      )}
-      {profile?.must_change_password ? (
-        <form onSubmit={changePassword} className="form-stack">
-          <label>
-            New password
-            <input
-              type="password"
-              autoComplete="new-password"
-              value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
-              required
-            />
-          </label>
-          <label>
-            Confirm password
-            <input
-              type="password"
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(event) => setConfirm(event.target.value)}
-              required
-            />
-          </label>
-          <button disabled={busy}>
-            {busy ? "Saving…" : "Change password"}
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={signIn} className="form-stack">
-          <label>
-            Username or email
-            <input
-              autoComplete="username"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              required
-            />
-          </label>
-          <label>
-            Password
-            <input
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-            />
-          </label>
-          <button disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
-        </form>
-      )}
+      <form onSubmit={signIn} className="form-stack">
+        <label>
+          Username or email
+          <input
+            autoComplete="username"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            required
+          />
+        </label>
+        <label>
+          Password
+          <input
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
+        </label>
+        <button disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
+      </form>
     </section>
   );
 }
@@ -221,15 +173,6 @@ export function ManagePage({
   );
   const [selected, setSelected] = useState<MeetEvent | null>(null);
   const [form, setForm] = useState(blankEvent);
-  const [result, setResult] = useState({
-    goldteamid: null as number | null,
-    silverteamid: null as number | null,
-    bronzeteamid: null as number | null,
-    gold_winner_name: "",
-    silver_winner_name: "",
-    bronze_winner_name: "",
-    status: "Completed" as const,
-  });
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
@@ -263,15 +206,6 @@ export function ManagePage({
       coordinatorid: event.coordinatorid,
       status: event.status,
     });
-    setResult({
-      goldteamid: event.goldteamid,
-      silverteamid: event.silverteamid,
-      bronzeteamid: event.bronzeteamid,
-      gold_winner_name: event.gold_winner_name ?? "",
-      silver_winner_name: event.silver_winner_name ?? "",
-      bronze_winner_name: event.bronze_winner_name ?? "",
-      status: "Completed",
-    });
     setNotice("");
     setError("");
   }
@@ -296,38 +230,6 @@ export function ManagePage({
       selected ? "Event updated." : "Event created.",
     );
   }
-  async function submitResult(event: FormEvent) {
-    event.preventDefault();
-    if (!selected) return;
-    await run(
-      () => saveResult(selected, result, profile.username),
-      "Official result published. Gold winners were added to qualifiers.",
-    );
-  }
-  const teamSelect = (
-    key: "goldteamid" | "silverteamid" | "bronzeteamid",
-    label: string,
-  ) => (
-    <label>
-      {label}
-      <select
-        value={result[key] ?? ""}
-        onChange={(event) =>
-          setResult((previous) => ({
-            ...previous,
-            [key]: event.target.value ? Number(event.target.value) : null,
-          }))
-        }
-      >
-        <option value="">No team</option>
-        {data.teams.map((team) => (
-          <option key={team.id} value={team.id}>
-            {team.acronym} — {team.name}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
   return (
     <section className="panel">
       <div className="page-heading">
@@ -335,8 +237,8 @@ export function ManagePage({
         <h1>Meet management</h1>
         <p>
           {admin
-            ? "Manage events, results, assignments, and coordinators."
-            : `Assigned events for ${profile.fullname}.`}
+            ? "Manage events, assignments, and coordinators."
+            : `Events for ${profile.fullname}.`}
         </p>
       </div>
       {notice && (
@@ -354,7 +256,7 @@ export function ManagePage({
           className={tab === "events" ? "active" : ""}
           onClick={() => { setTab("events"); navigate("/manage"); }}
         >
-          Events & results
+          Events
         </button>
         {admin && (
           <button
@@ -546,88 +448,6 @@ export function ManagePage({
                     </div>
                   </form>
                 )}
-                {selected && (
-                  <form
-                    onSubmit={submitResult}
-                    className="form-stack result-form"
-                  >
-                    <h2>Official result</h2>
-                    <div className="form-two">
-                      {teamSelect("goldteamid", "Gold team")}
-                      {teamSelect("silverteamid", "Silver team")}
-                      {teamSelect("bronzeteamid", "Bronze team")}
-                    </div>
-                    <label>
-                      Gold winner names <small>One per line</small>
-                      <textarea
-                        rows={3}
-                        value={result.gold_winner_name}
-                        onChange={(event) =>
-                          setResult({
-                            ...result,
-                            gold_winner_name: event.target.value,
-                          })
-                        }
-                      />
-                    </label>
-                    <label>
-                      Silver winner names
-                      <textarea
-                        rows={3}
-                        value={result.silver_winner_name}
-                        onChange={(event) =>
-                          setResult({
-                            ...result,
-                            silver_winner_name: event.target.value,
-                          })
-                        }
-                      />
-                    </label>
-                    <label>
-                      Bronze winner names
-                      <textarea
-                        rows={3}
-                        value={result.bronze_winner_name}
-                        onChange={(event) =>
-                          setResult({
-                            ...result,
-                            bronze_winner_name: event.target.value,
-                          })
-                        }
-                      />
-                    </label>
-                    <div className="button-row">
-                      <button disabled={saving}>
-                        {saving ? "Saving…" : "Publish result"}
-                      </button>
-                      <button
-                        type="button"
-                        className="button-outline"
-                        disabled={saving}
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              "Clear result and all qualifiers for this event?",
-                            )
-                          )
-                            void run(
-                              () => clearResult(selected.id),
-                              "Result and qualifiers cleared.",
-                            );
-                        }}
-                      >
-                        Clear result
-                      </button>
-                      <button
-                        type="button"
-                        className="button-outline"
-                        onClick={() => navigate(`/qualifiers/${selected.id}`)}
-                      >
-                        Manage qualifiers
-                      </button>
-                    </div>
-                  </form>
-                )}
               </>
             )}
           </div>
@@ -767,7 +587,21 @@ function CoordinatorAdmin({
         await requireSupabase().functions.invoke("coordinator-admin", {
           body: { action, ...extra },
         });
-      if (invokeError) throw invokeError;
+      if (invokeError) {
+        const response = (invokeError as { context?: unknown }).context;
+        if (response instanceof Response) {
+          const payload: unknown = await response
+            .clone()
+            .json()
+            .catch(() => null);
+          if (payload && typeof payload === "object" && "error" in payload) {
+            const serverError = (payload as { error?: unknown }).error;
+            if (typeof serverError === "string" && serverError.trim())
+              throw new Error(serverError);
+          }
+        }
+        throw invokeError;
+      }
       if (data?.error) throw new Error(data.error);
       await reload();
       setNotice("Coordinator account updated.");
@@ -819,7 +653,7 @@ function CoordinatorAdmin({
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            minLength={12}
+            minLength={6}
             required
           />
         </label>
@@ -902,14 +736,14 @@ function CoordinatorAdmin({
                     <input
                       type="password"
                       autoComplete="new-password"
-                      minLength={12}
+                      minLength={6}
                       value={resetPassword}
                       onChange={(event) => setResetPassword(event.target.value)}
                     />
                   </label>
                   <button
                     className="button-outline"
-                    disabled={busy || resetPassword.length < 12}
+                    disabled={busy || resetPassword.length < 6}
                     onClick={() =>
                       void request("reset-password", {
                         id: item.id,

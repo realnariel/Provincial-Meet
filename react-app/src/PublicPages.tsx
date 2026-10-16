@@ -1,15 +1,77 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { AppData } from "./App";
+import { MEET_DATE, MEET_OPENING_AT } from "./meet-config";
 import {
   compareMedals,
   DIVISIONS,
   SPORTS_CATEGORIES,
   winnerNames,
+  type Coordinator,
   type DivisionFilter,
   type MeetEvent,
 } from "./types";
 
 type Nav = (path: string) => void;
+
+const EVENT_FILTERS_KEY = "provincial-meet-event-filters";
+
+type StoredEventFilters = {
+  query: string;
+  sport: string;
+  category: string;
+  division: string;
+  status: string;
+  assignedOnly: boolean;
+};
+
+function readEventFilters(): StoredEventFilters {
+  const defaults: StoredEventFilters = {
+    query: "",
+    sport: "All Sports",
+    category: "All Categories",
+    division: "Overall",
+    status: "All Statuses",
+    assignedOnly: false,
+  };
+  try {
+    const value = window.sessionStorage.getItem(EVENT_FILTERS_KEY);
+    return value ? { ...defaults, ...JSON.parse(value) } : defaults;
+  } catch {
+    return defaults;
+  }
+}
+
+const SPORT_ICONS: Record<string, string> = {
+  archery: "🏹",
+  arnis: "🥋",
+  athletics: "🏃",
+  badminton: "🏸",
+  baseball: "⚾",
+  basketball: "🏀",
+  billiards: "🎱",
+  bocce: "🎯",
+  boxing: "🥊",
+  chess: "♟️",
+  dancesport: "💃",
+  football: "⚽",
+  futsal: "⚽",
+  gymnastics: "🤸",
+  "pencak silat": "🥋",
+  "sepak takraw": "🏐",
+  softball: "🥎",
+  swimming: "🏊",
+  "table tennis": "🏓",
+  taekwondo: "🥋",
+  tennis: "🎾",
+  volleyball: "🏐",
+  weightlifting: "🏋️",
+  wrestling: "🤼",
+  wushu: "🥋",
+};
+
+function sportIcon(sport: string | null) {
+  return SPORT_ICONS[sport?.trim().toLowerCase() ?? ""] ?? "🏅";
+}
 
 function teamName(data: AppData, id: number | null, short = true) {
   const team = data.teams.find((item) => item.id === id);
@@ -106,6 +168,53 @@ function MeetArt() {
     />
   );
 }
+
+function MeetCountdown() {
+  const [now, setNow] = useState(() => Date.now());
+  const target = new Date(MEET_OPENING_AT).getTime();
+  const distance = target - now;
+  const day = 86_400_000;
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  let value: ReactNode;
+  let accessibleValue: string;
+  if (distance > day) {
+    const days = Math.ceil(distance / day);
+    accessibleValue = `${days} ${days === 1 ? "day" : "days"} to go`;
+    value = (
+      <>
+        <span className="poster-days">{days}</span>
+        <span className="poster-days-caption">
+          {days === 1 ? "Day" : "Days"}<br />to go
+        </span>
+      </>
+    );
+  } else if (distance > 0) {
+    const hours = Math.floor(distance / 3_600_000);
+    const minutes = Math.floor((distance % 3_600_000) / 60_000);
+    const seconds = Math.floor((distance % 60_000) / 1_000);
+    accessibleValue = `${hours} hours, ${minutes} minutes, ${seconds} seconds to go`;
+    value = <span className="poster-countdown-value">{hours}h {minutes}m {seconds}s</span>;
+  } else if (distance > -day) {
+    accessibleValue = "The event is today";
+    value = <span className="poster-countdown-value">Today</span>;
+  } else {
+    accessibleValue = "Event started";
+    value = <span className="poster-countdown-value">Event started</span>;
+  }
+
+  return (
+    <span className="poster-countdown" role="timer" aria-label={accessibleValue}>
+      <i className="bi bi-stopwatch" aria-hidden="true" />
+      <span className="poster-countdown-content" aria-hidden="true">{value}</span>
+    </span>
+  );
+}
+
 function MeetPoster() {
   return (
     <section
@@ -139,8 +248,8 @@ function MeetPoster() {
       <p className="poster-districts">ELEMENTARY · SECONDARY · PARAGAMES</p>
       <p className="poster-theme">“Strong Together. Greater Tomorrow”</p>
       <div className="poster-details">
-        <span className="poster-date">▣ &nbsp; Schedule to be announced</span>
-        <span className="poster-countdown">◷ &nbsp; DATE TBD</span>
+        <span className="poster-date">▣ &nbsp; {MEET_DATE}</span>
+        <MeetCountdown />
       </div>
       <div className="poster-sports" aria-hidden="true">
         <span>⚽</span>
@@ -353,16 +462,16 @@ export function HomePage({ data, navigate }: { data: AppData; navigate: Nav }) {
               <span aria-hidden="true">🏆</span>Rankings
             </button>
             <button className="btn-glass" onClick={() => navigate("/events")}>
-              <span aria-hidden="true">▣</span>Results
+              <span aria-hidden="true">🏅</span>Results
             </button>
             <button className="btn-glass" onClick={() => navigate("/teams")}>
-              <span aria-hidden="true">♟</span>Teams
+              <span aria-hidden="true">👥</span>Teams
             </button>
             <button
               className="btn-glass"
               onClick={() => navigate("/reports/general")}
             >
-              <span aria-hidden="true">▤</span>Reports
+              <span aria-hidden="true">📊</span>Reports
             </button>
           </div>
         </section>
@@ -521,16 +630,28 @@ export function RankingsPage({
 
 export function EventsPage({
   data,
+  profile,
+  admin,
   navigate,
 }: {
   data: AppData;
+  profile: Coordinator | null;
+  admin: boolean;
   navigate: Nav;
 }) {
-  const [query, setQuery] = useState("");
-  const [sport, setSport] = useState("All Sports");
-  const [category, setCategory] = useState("All Categories");
-  const [division, setDivision] = useState("All Divisions");
-  const [status, setStatus] = useState("All Statuses");
+  const [storedFilters] = useState(readEventFilters);
+  const [query, setQuery] = useState(storedFilters.query);
+  const [sport, setSport] = useState(storedFilters.sport);
+  const [category, setCategory] = useState(storedFilters.category);
+  const [division, setDivision] = useState(storedFilters.division);
+  const [status, setStatus] = useState(storedFilters.status);
+  const [assignedOnly, setAssignedOnly] = useState(storedFilters.assignedOnly);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  useEffect(() => {
+    window.sessionStorage.setItem(EVENT_FILTERS_KEY, JSON.stringify({
+      query, sport, category, division, status, assignedOnly,
+    }));
+  }, [query, sport, category, division, status, assignedOnly]);
   const sports = useMemo(
     () =>
       [
@@ -542,13 +663,16 @@ export function EventsPage({
       ].sort(),
     [data.events],
   );
-  const filtered = data.events.filter((event) => {
+  const scopedEvents = assignedOnly && profile
+    ? data.events.filter((event) => event.coordinatorid === profile.id)
+    : data.events;
+  const filtered = scopedEvents.filter((event) => {
     const search = `${event.title} ${event.sport_name ?? ""}`.toLowerCase();
     return (
       search.includes(query.toLowerCase()) &&
       (sport === "All Sports" || event.sport_name === sport) &&
       (category === "All Categories" || event.sport_category === category) &&
-      (division === "All Divisions" || event.division === division) &&
+      (division === "Overall" || event.division === division) &&
       (status === "All Statuses" || event.status === status)
     );
   });
@@ -558,45 +682,123 @@ export function EventsPage({
   const percent = data.events.length
     ? Math.round((finished / data.events.length) * 100)
     : 0;
+  const lastUpdated = useMemo(() => {
+    const latest = data.events
+      .map((event) => event.updatedat)
+      .filter((value): value is string => Boolean(value))
+      .map((value) => new Date(/[zZ]|[+-]\d\d:\d\d$/.test(value) ? value : `${value}Z`))
+      .filter((value) => !Number.isNaN(value.getTime()))
+      .sort((a, b) => b.getTime() - a.getTime())[0];
+    return latest
+      ? new Intl.DateTimeFormat("en-US", {
+          timeZone: "Asia/Manila",
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(latest)
+      : "No updates yet";
+  }, [data.events]);
   return (
     <section className="panel events-page">
-      <div className="page-heading">
-        <span className="eyebrow dark">Competition catalog</span>
-        <h1>Match Results &amp; Events</h1>
-        <p>
-          Browse events and official results by sport, category, division, and
-          status.
-        </p>
+      <div className="page-heading events-heading">
+        <h1><i className="bi bi-calendar-event-fill" aria-hidden="true" /> Event Records</h1>
+        <p>Bohol Provincial Athletic Meet 2026 Event Records</p>
       </div>
-      <div className="events-summary">
+      <div className="events-summary desktop-events-summary">
         <div className="event-stat">
-          <span>Total Events</span>
+          <span>Total Events <i className="bi bi-calendar-event" aria-hidden="true" /></span>
           <strong>{data.events.length}</strong>
         </div>
         <div className="event-stat">
-          <span>Completed</span>
+          <span>Completed <i className="bi bi-check-circle" aria-hidden="true" /></span>
           <strong>{finished}</strong>
         </div>
         <div className="event-stat">
-          <span>Pending</span>
+          <span>Pending <i className="bi bi-clock" aria-hidden="true" /></span>
           <strong>{data.events.length - finished}</strong>
         </div>
         <div className="event-stat">
-          <span>Meet Progress</span>
-          <strong>{percent}%</strong>
-          <div className="progress-bar-glass">
-            <span className="progress-fill" style={{ width: `${percent}%` }} />
-          </div>
+          <span>Last Update <i className="bi bi-arrow-clockwise" aria-hidden="true" /></span>
+          <strong className="last-update-value">{lastUpdated}</strong>
         </div>
       </div>
-      <div className="filter-grid">
+      <div className="mobile-events-summary" aria-label="Meet progress summary">
+        <div className="event-stat">
+          <span>Finished <i className="bi bi-check-circle-fill" aria-hidden="true" /></span>
+          <strong>{finished} / {data.events.length}</strong>
+          <div className="progress-bar-glass">
+            <span className="progress-fill" style={{ width: `${percent}%` }} />
+            <b>{percent}%</b>
+          </div>
+        </div>
+        <div className="event-stat">
+          <span>Last Update <i className="bi bi-clock-history" aria-hidden="true" /></span>
+          <strong className="last-update-value">{lastUpdated}</strong>
+          <small><i className="live-dot" /> Live Data</small>
+        </div>
+      </div>
+
+      <div className="events-section-heading">
+        <h2>Events</h2>
+        <div className="events-toolbar">
+          {profile && (
+            <button
+              type="button"
+              className="button-outline assigned-events-button"
+              onClick={() => {
+                setAssignedOnly((current) => !current);
+              }}
+            >
+              <i className={assignedOnly ? "bi bi-list" : "bi bi-person-lines-fill"} aria-hidden="true" />{" "}
+              {assignedOnly ? "View all events" : "View assigned events"}
+            </button>
+          )}
+          {admin && (
+            <button type="button" className="button-outline pending-report-button"
+              onClick={() => navigate("/reports/pending")}>
+              <i className="bi bi-clock-history" aria-hidden="true" /> Pending report
+            </button>
+          )}
+          {admin && (
+            <button type="button" onClick={() => navigate("/manage")}>
+              <i className="bi bi-plus-lg" aria-hidden="true" /> Add event
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="division-filters events-division-filters" role="group" aria-label="Event division">
+        {["Overall", "Elementary", "Secondary", "Paragames"].map((value) => (
+          <button key={value} type="button"
+            className={division === value ? "filter-btn active-filter" : "filter-btn"}
+            onClick={() => setDivision(value)}>{value}</button>
+        ))}
+      </div>
+
+      <div className="mobile-event-search">
+        <label>
+          <i className="bi bi-search" aria-hidden="true" />
+          <span className="sr-only">Search events</span>
+          <input type="search" value={query} onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search event title…" />
+        </label>
+        <button type="button" onClick={() => setFiltersOpen((open) => !open)}
+          aria-expanded={filtersOpen} aria-controls="eventFilters">
+          <i className="bi bi-sliders" aria-hidden="true" /> Filters
+        </button>
+      </div>
+
+      <div className={filtersOpen ? "filter-grid events-filter-grid open" : "filter-grid events-filter-grid"}
+        id="eventFilters">
         <label>
           Search
           <input
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Event title or sport"
+            placeholder="Search event title…"
           />
         </label>
         <label>
@@ -624,18 +826,6 @@ export function EventsPage({
           </select>
         </label>
         <label>
-          Division
-          <select
-            value={division}
-            onChange={(event) => setDivision(event.target.value)}
-          >
-            <option>All Divisions</option>
-            {DIVISIONS.map((value) => (
-              <option key={value}>{value}</option>
-            ))}
-          </select>
-        </label>
-        <label>
           Status
           <select
             value={status}
@@ -647,19 +837,30 @@ export function EventsPage({
           </select>
         </label>
       </div>
-      <p className="result-count">
-        {filtered.length} of {data.events.length} events
+      <p className="result-count events-result-count">
+        {filtered.length} of {scopedEvents.length} events
       </p>
       {filtered.length ? (
-        <div className="event-list">
+        <div className="event-records">
+          <div className="event-table-header" aria-hidden="true">
+            <span>Sport &amp; Class</span>
+            <span>Event Title</span>
+            <span>Winners Allocation</span>
+            <span>Action</span>
+          </div>
+          <div className="event-list">
           {filtered.map((event) => (
             <EventCard
               key={event.id}
               event={event}
               data={data}
               navigate={navigate}
+              canEdit={Boolean(
+                profile && (admin || event.coordinatorid === profile.id),
+              )}
             />
           ))}
+          </div>
         </div>
       ) : (
         <p className="empty">No events match the selected filters.</p>
@@ -672,51 +873,55 @@ function EventCard({
   event,
   data,
   navigate,
+  canEdit,
 }: {
   event: MeetEvent;
   data: AppData;
   navigate: Nav;
+  canEdit: boolean;
 }) {
+  const resultLines = event.status === "Completed"
+    ? [
+        ["🥇", event.goldteamid, event.gold_winner_name],
+        ["🥈", event.silverteamid, event.silver_winner_name],
+        ["🥉", event.bronzeteamid, event.bronze_winner_name],
+      ].filter(([, teamId, names]) => Boolean(teamId || winnerNames(names as string | null).length))
+    : [];
   return (
     <article className="event-card">
-      <div>
-        <div className="event-meta">
-          🏅 &nbsp; {event.sport_name || "Sport"} · {event.division} ·{" "}
-          {event.sport_category || "Open"} · {event.event_category || "Event"}
-        </div>
-        <h3>{event.title}</h3>
-        {event.status === "Completed" && (
-          <div className="event-results">
-            <span>
-              🥇 {teamName(data, event.goldteamid)}{" "}
-              {winnerNames(event.gold_winner_name).join(", ")}
+      <div className="event-card-summary">
+        <div className="event-record-sport">
+          <span className={event.status === "Completed" ? "record-status completed" : "record-status pending"}>
+            <i aria-hidden="true" /> {event.status}
+          </span>
+          <div className="event-badges">
+            <span className="sport-badge">
+              <span className="sport-icon" aria-hidden="true">{sportIcon(event.sport_name)}</span>
+              {event.sport_name || "Sport"}
             </span>
-            <span>
-              🥈 {teamName(data, event.silverteamid)}{" "}
-              {winnerNames(event.silver_winner_name).join(", ")}
-            </span>
-            <span>
-              🥉 {teamName(data, event.bronzeteamid)}{" "}
-              {winnerNames(event.bronze_winner_name).join(", ")}
-            </span>
+            <span className="division-badge">{event.division}</span>
           </div>
-        )}
-      </div>
-      <div className="event-actions">
-        <span
-          className={
-            event.status === "Completed" ? "status completed" : "status pending"
-          }
-        >
-          {event.status}
-        </span>
-        <button
-          className="text-link"
-          onClick={() => navigate(`/teams/${event.goldteamid ?? ""}`)}
-          disabled={!event.goldteamid}
-        >
-          Winning team →
-        </button>
+        </div>
+        <div className="event-record-title">
+          <h3>{event.title}</h3>
+          <small>{event.sport_category || "Open"} · {event.event_category || "Event"}</small>
+        </div>
+        <div className="event-record-winners">
+          {resultLines.length ? resultLines.map(([medal, teamId, names]) => (
+            <span key={medal as string}>
+              {medal as string} {teamName(data, teamId as number | null)}{" "}
+              {winnerNames(names as string | null).join(", ")}
+            </span>
+          )) : <span className="no-results">– No results recorded</span>}
+        </div>
+        <div className="event-actions">
+          {canEdit && (
+            <button type="button" className="button-outline"
+              onClick={() => navigate(`/scoring/${event.id}`)}>
+              {event.status === "Completed" ? "Update" : "Submit"}
+            </button>
+          )}
+        </div>
       </div>
     </article>
   );

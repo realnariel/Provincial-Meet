@@ -73,7 +73,7 @@ source MVC database and its data are untouched.
 
 ## Sign-in and administration
 
-- [ ] Username sign-in, sign-out, required first-password change, denied-access
+- [ ] Username sign-in, sign-out, admin-only password reset, denied-access
   handling, and session persistence.
 - [ ] Admin creates, edits, resets credentials for, and deletes coordinators;
   admin/coordinator role boundaries are enforced in database policies/functions,

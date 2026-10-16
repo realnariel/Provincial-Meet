@@ -1,0 +1,284 @@
+.workflow-page {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 4px 0 42px;
+  color: #153f31;
+}
+
+.workflow-back {
+  border: 0;
+  padding: 8px 0 18px;
+  background: transparent;
+  color: #545b57;
+  box-shadow: none;
+  font-weight: 800;
+  text-transform: none;
+}
+
+.workflow-back:hover { color: #0d4b36; transform: none; box-shadow: none; }
+
+.workflow-card {
+  border: 1px solid #d8dfda;
+  border-top: 6px solid #d6a943;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 18px 42px rgba(19, 59, 43, .09);
+  padding: clamp(24px, 4vw, 54px);
+}
+
+.scoring-heading,
+.scoring-event-line,
+.scoring-actions,
+.scoring-actions > div,
+.participant-tools,
+.participant-tools > div {
+  display: flex;
+  align-items: center;
+}
+
+.scoring-heading { justify-content: space-between; gap: 24px; }
+.scoring-heading h1,
+.delegation-heading h1 {
+  margin: 0 0 12px;
+  color: #0d4b36;
+  font-size: clamp(1.7rem, 3vw, 2.45rem);
+  line-height: 1.12;
+  text-transform: uppercase;
+}
+
+.scoring-heading h1 i { color: #f2b800; margin-right: 10px; }
+.scoring-event-line { flex-wrap: wrap; gap: 10px; color: #292e2b; }
+.scoring-event-line > strong { font-size: clamp(1rem, 1.8vw, 1.28rem); }
+.workflow-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 6px 18px;
+  border-radius: 7px;
+  font-size: .82rem;
+  font-weight: 900;
+}
+.workflow-badge.division { background: #0e4a35; color: #fff; }
+.workflow-badge.sport { border: 1px solid #d4dbd7; background: #f5f7f6; color: #2f3632; }
+.workflow-status {
+  flex: 0 0 auto;
+  padding: 9px 20px;
+  border-radius: 7px;
+  background: #168b5b;
+  color: #fff;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.workflow-status.pending { background: #d5a62c; color: #183e31; }
+
+.updated-notice {
+  display: flex;
+  gap: 8px;
+  margin: 28px 0;
+  padding: 20px;
+  border: 1px solid #d5dcda;
+  border-radius: 9px;
+  background: #f5f7f6;
+  color: #5c625f;
+}
+.updated-notice i { color: #0d4b36; }
+
+.medal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  margin: 28px 0 42px;
+}
+.medal-panel {
+  border: 1px solid #d7dcda;
+  border-top: 5px solid #d9b225;
+  border-radius: 14px;
+  background: #f8faf9;
+  padding: 26px;
+  box-shadow: 0 10px 24px rgba(21, 63, 49, .04);
+}
+.medal-panel.silver { border-top-color: #949897; }
+.medal-panel.bronze { border-top-color: #d17a2c; }
+.medal-panel h2 {
+  margin: 0 0 20px;
+  color: #94730c;
+  font-size: 1.15rem;
+  text-transform: uppercase;
+}
+.medal-panel.silver h2 { color: #6f757b; }
+.medal-panel.bronze h2 { color: #9e5524; }
+.medal-panel select,
+.medal-panel textarea {
+  width: 100%;
+  border: 1px solid #ced7d2;
+  border-radius: 8px;
+  background: #fff;
+  color: #303633;
+  font: inherit;
+}
+.medal-panel select { min-height: 58px; padding: 0 16px; }
+.medal-panel textarea { min-height: 112px; margin-top: 16px; padding: 16px; resize: vertical; }
+.medal-panel small { display: block; color: #666e69; line-height: 1.45; }
+
+.scoring-actions {
+  justify-content: space-between;
+  gap: 18px;
+  border-top: 1px solid #d7ddda;
+  padding-top: 28px;
+}
+.scoring-actions > div { flex-wrap: wrap; gap: 10px; }
+.scoring-actions button,
+.participant-tools button,
+.winner-choices > button {
+  min-height: 46px;
+  border-radius: 999px;
+  padding: 10px 26px;
+  font-weight: 900;
+  text-transform: none;
+}
+.workflow-card .danger-outline {
+  border: 1.5px solid #ef3340;
+  background: #fff;
+  color: #ef3340;
+  box-shadow: none;
+}
+.workflow-card .delegation-button {
+  border: 1.5px solid #10915c;
+  background: #fff;
+  color: #0d8957;
+  box-shadow: none;
+}
+.workflow-card .publish-button {
+  min-width: 310px;
+  background: linear-gradient(90deg, #0d4b36, #397a48);
+  color: #fff;
+}
+
+.delegation-heading { margin-bottom: 28px; }
+.delegation-heading h1 i { color: #f2b800; }
+.delegation-heading p { margin: 0; color: #5d625f; font-weight: 700; }
+.add-participant-panel {
+  margin: 18px 0 26px;
+  padding: 34px;
+  border-radius: 12px;
+  background: #f7f9f8;
+  box-shadow: 0 3px 8px rgba(20, 59, 43, .08);
+}
+.add-participant-panel h2 { margin: 0 0 12px; color: #0d4b36; text-transform: uppercase; }
+.add-participant-panel h2 i { color: #f2b800; }
+.add-participant-panel p { color: #6b716d; }
+.participant-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+.participant-form-grid input,
+.participant-form-grid select,
+.delegation-table input,
+.delegation-table select,
+.participant-cards input,
+.participant-cards select {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #cdd6d1;
+  border-radius: 7px;
+  background: #fff;
+  color: #264c3d;
+  padding: 9px 14px;
+  font: inherit;
+}
+.participant-form-grid button { min-height: 48px; border-radius: 7px; text-transform: none; }
+
+.recorded-winners {
+  margin: 0 0 26px;
+  border: 1px solid #cfd7d3;
+  border-radius: 8px;
+  background: #fff;
+}
+.recorded-winners summary { padding: 20px; cursor: pointer; color: #303632; font-weight: 900; }
+.winner-choices { display: grid; gap: 8px; border-top: 1px solid #dce2df; padding: 18px; }
+.winner-choices > label { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 8px; background: #f5f8f6; }
+.winner-choices input { width: 18px; height: 18px; }
+.winner-choices span { display: grid; }
+.winner-choices small { color: #69716d; }
+.winner-choices > button { justify-self: start; border-radius: 8px; }
+
+.participant-tools {
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 0 18px;
+  padding: 17px;
+  border: 1px solid #d4dcda;
+  border-radius: 8px;
+  background: #f5f7f6;
+}
+.participant-tools p { margin: 0; color: #333a36; font-weight: 700; }
+.participant-tools > div { flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.participant-tools button { min-height: 38px; border-radius: 6px; padding: 7px 18px; }
+
+.delegation-table-wrap { overflow-x: auto; }
+.delegation-table { width: 100%; border-collapse: collapse; }
+.delegation-table th { padding: 16px 14px; background: #0d4b36; color: #fff; text-align: left; text-transform: uppercase; font-size: .82rem; }
+.delegation-table th:first-child { border-radius: 10px 0 0 0; }
+.delegation-table th:last-child { border-radius: 0 10px 0 0; }
+.delegation-table td { border-bottom: 1px solid #dce2df; padding: 12px 8px; }
+.delegation-table td:first-child { width: 58px; text-align: center; }
+.delegation-table td:first-child input { width: 18px; min-height: 18px; }
+.participant-cards { display: none; }
+.delegation-empty { padding: 40px; border: 1px dashed #cdd6d1; border-radius: 10px; text-align: center; }
+
+@media (max-width: 900px) {
+  .medal-grid { grid-template-columns: 1fr; }
+  .participant-form-grid { grid-template-columns: 1fr 1fr; }
+  .scoring-actions { align-items: stretch; }
+  .workflow-card .publish-button { min-width: 240px; }
+}
+
+@media (max-width: 760px) {
+  .workflow-page { padding-bottom: 100px; }
+  .workflow-back { padding-left: 8px; }
+  .workflow-card { border-radius: 12px; padding: 24px; }
+  .scoring-heading { align-items: flex-start; }
+  .scoring-heading h1,
+  .delegation-heading h1 { font-size: 1.65rem; }
+  .scoring-event-line { align-items: flex-start; }
+  .scoring-event-line > strong { flex-basis: 100%; }
+  .workflow-status { padding: 7px 12px; font-size: .78rem; }
+  .updated-notice { margin: 22px 0; padding: 15px; font-size: .85rem; }
+  .medal-grid { gap: 24px; margin-bottom: 28px; }
+  .medal-panel { padding: 22px; }
+  .scoring-actions { align-items: stretch; flex-direction: column; }
+  .scoring-actions > div { align-items: stretch; flex-direction: column; }
+  .scoring-actions button,
+  .workflow-card .publish-button { width: 100%; min-width: 0; }
+  .workflow-card .publish-button { min-height: 58px; }
+  .add-participant-panel { padding: 25px 20px; }
+  .participant-form-grid { grid-template-columns: 1fr; }
+  .participant-tools { align-items: stretch; flex-direction: column; }
+  .participant-tools > div { justify-content: flex-start; }
+  .participant-tools button { flex: 1; }
+  .delegation-table-wrap { display: none; }
+  .participant-cards { display: grid; gap: 18px; }
+  .participant-cards article {
+    display: grid;
+    gap: 13px;
+    border-left: 5px solid #d5ab3c;
+    border-radius: 14px;
+    background: #0c4935;
+    padding: 16px;
+    color: #fff;
+    box-shadow: 0 12px 24px rgba(15, 64, 46, .18);
+  }
+  .participant-cards article > label { display: grid; gap: 6px; color: #f6df9e; font-size: .78rem; font-weight: 900; }
+  .participant-cards .participant-select { display: flex; align-items: center; justify-content: space-between; border-radius: 8px; background: rgba(255,255,255,.12); padding: 10px 12px; color: #fff; text-transform: uppercase; }
+  .participant-cards .participant-select input { width: 18px; min-height: 18px; }
+}
+
+@media (max-width: 480px) {
+  .workflow-card { padding: 20px 15px; }
+  .scoring-heading { flex-direction: column; gap: 10px; }
+  .workflow-status { align-self: flex-start; }
+  .medal-panel { padding: 20px 16px; }
+  .participant-tools > div { display: grid; grid-template-columns: 1fr; }
+}

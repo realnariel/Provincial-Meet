@@ -7,6 +7,10 @@
 @media (max-width: 1000px) {
   .main-nav { display: none !important; }
   .menu-toggle { display: none !important; }
+  .site-footer {
+    min-height: 0;
+    padding: .8rem 1rem;
+  }
   .mobile-bottom-nav {
     display: block;
     position: fixed;
