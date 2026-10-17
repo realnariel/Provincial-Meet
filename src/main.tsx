@@ -7,6 +7,7 @@ import './mobile-nav.css'
 import './workflow-pages.css'
 import './congmeet-reports.css'
 import './brand-header.css'
+import './mobile-hero.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode><App /></React.StrictMode>

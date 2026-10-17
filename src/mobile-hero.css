@@ -1,0 +1,536 @@
+/* ============================================================
+   Mobile hero — match official poster (readable dark/gold text)
+   Import AFTER classic-theme.css in main.tsx
+   ============================================================ */
+
+/* Desktop: three title spans sit in the existing green/gold bar */
+@media (min-width: 761px) {
+  .poster-title {
+    display: block;
+  }
+  .poster-title .poster-bohol,
+  .poster-title .poster-event,
+  .poster-title .poster-year {
+    display: inline;
+    font-family: inherit;
+    font-weight: 800;
+    text-transform: uppercase;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+    border-radius: 0;
+    background: linear-gradient(#fffbdc 20%, #f8e6a1 42%, #b58222 80%, #f5dfa0);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 2px 0 #002719);
+    color: #fff4c2;
+  }
+  .poster-title .poster-bohol {
+    font-size: 4cqi;
+  }
+  .poster-title .poster-bohol::after {
+    content: " ";
+  }
+  .poster-title .poster-event {
+    font-size: 3.2cqi;
+  }
+  .poster-title .poster-event::after {
+    content: " ";
+  }
+  .poster-title .poster-year {
+    display: block;
+    font-size: 4cqi;
+  }
+}
+
+@media (max-width: 760px) {
+  .home-grid {
+    gap: 1.1rem;
+  }
+
+  .meet-poster {
+    --poster-green: #073d28;
+    --poster-gold: #c8a354;
+    --poster-cream: #fff4c2;
+    min-height: 0;
+    padding: 1.25rem 0.9rem 3.4rem;
+    border-radius: 16px;
+    border: 1px solid #c8a35466;
+    /* Same soft field as tablet/desktop poster */
+    background:
+      repeating-linear-gradient(
+        137deg,
+        transparent 0 90px,
+        #d7e3d14d 90px 125px,
+        #ffffff90 125px 140px
+      ),
+      radial-gradient(ellipse at 50% 42%, #fff 15%, #f9faf1 50%, #dce8d8 100%);
+    box-shadow: 0 12px 28px #123f2d33;
+    overflow: hidden;
+  }
+
+  .meet-poster::before {
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(
+        140deg,
+        #073d28 0 4%,
+        #397447 4% 7%,
+        #c8a354 7% 7.5%,
+        transparent 7.5% 19%,
+        #39744740 19% 23%,
+        transparent 23%
+      ),
+      linear-gradient(
+        320deg,
+        #073d28 0 7%,
+        #397447 7% 11%,
+        #c8a354 11% 11.5%,
+        transparent 11.5% 23%,
+        #39744740 23% 27%,
+        transparent 27%
+      ),
+      /* dotted overlay (kept) */
+      radial-gradient(#ffffffcc 1.2px, transparent 1.7px) 0 0 / 10px 10px,
+      radial-gradient(#39744733 1px, transparent 1.4px) 5px 5px / 10px 10px;
+    opacity: 1;
+    mask-image: none;
+  }
+
+  .meet-poster::after {
+    bottom: -4%;
+    left: -10%;
+    width: 120%;
+    height: 28%;
+    border-top: 6px solid var(--poster-gold);
+    border-radius: 50% 50% 0 0;
+    background: linear-gradient(130deg, #092d20, #24633d, #073d28);
+    transform: rotate(-3deg);
+    z-index: 0;
+  }
+
+  .meet-poster > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .meet-art {
+    width: 92%;
+    max-width: 420px;
+    height: auto;
+    max-height: 200px;
+    margin: 0.25rem auto 0.35rem;
+    display: block;
+    filter: drop-shadow(0 6px 10px #123f2d33);
+  }
+
+  /* Reset classic-theme title bar on mobile */
+  .meet-poster .poster-title {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
+    margin: 0.2rem auto 0.4rem !important;
+    padding: 0 !important;
+    width: 100% !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    transform: none !important;
+    animation: none !important;
+    color: #063d2a !important;
+  }
+
+  /* BOHOL — solid dark green, gold edge */
+  .meet-poster .poster-bohol {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    font-family: "Barlow Condensed", Impact, "Arial Black", sans-serif !important;
+    font-weight: 900 !important;
+    font-size: clamp(2.5rem, 15vw, 3.8rem) !important;
+    line-height: 0.95 !important;
+    letter-spacing: 0.04em !important;
+    text-transform: uppercase !important;
+    text-align: center !important;
+    color: #063d2a !important;
+    background: none !important;
+    background-clip: border-box !important;
+    -webkit-background-clip: border-box !important;
+    -webkit-text-fill-color: #063d2a !important;
+    filter: none !important;
+    text-shadow:
+      0 1px 0 #c8a354,
+      0 2px 0 #a8842e,
+      0 3px 6px #123f2d33 !important;
+  }
+  .meet-poster .poster-bohol::after {
+    content: none !important;
+  }
+
+  /* PROVINCIAL ATHLETIC MEET — green ribbon, cream text */
+  .meet-poster .poster-event {
+    display: block !important;
+    width: min(96%, 22rem) !important;
+    margin: 0.1rem auto !important;
+    padding: 0.4rem 0.85rem !important;
+    font-family: "Barlow Condensed", Impact, sans-serif !important;
+    font-weight: 800 !important;
+    font-size: clamp(0.95rem, 4.8vw, 1.3rem) !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    text-align: center !important;
+    color: #fff4c2 !important;
+    background: linear-gradient(90deg, #04281c, #0f5a3c 25%, #0f5a3c 75%, #04281c) !important;
+    background-clip: border-box !important;
+    -webkit-background-clip: border-box !important;
+    -webkit-text-fill-color: #fff4c2 !important;
+    border: 2px solid #c8a354 !important;
+    border-radius: 6px !important;
+    box-shadow: 0 3px 0 #f5e3a1, 0 6px 12px #123f2d44 !important;
+    filter: none !important;
+    text-shadow: 0 1px 2px #0008 !important;
+  }
+  .meet-poster .poster-event::after {
+    content: none !important;
+  }
+
+  /* 2026 — solid gold */
+  .meet-poster .poster-year {
+    display: block !important;
+    margin: 0.1rem 0 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    font-family: "Barlow Condensed", Impact, sans-serif !important;
+    font-weight: 900 !important;
+    font-size: clamp(2.6rem, 16vw, 4rem) !important;
+    line-height: 1 !important;
+    letter-spacing: 0.1em !important;
+    text-align: center !important;
+    color: #b88918 !important;
+    background: none !important;
+    background-clip: border-box !important;
+    -webkit-background-clip: border-box !important;
+    -webkit-text-fill-color: #c8a354 !important;
+    filter: none !important;
+    text-shadow:
+      0 1px 0 #fff4c2,
+      0 2px 0 #063d2a,
+      0 3px 8px #123f2d40 !important;
+  }
+
+  .meet-poster .poster-districts {
+    width: fit-content;
+    max-width: 95%;
+    margin: 0.55rem auto 0.25rem;
+    padding: 0.2rem 0.6rem;
+    background: transparent !important;
+    color: #063d2a !important;
+    border: 0 !important;
+    font-size: clamp(0.62rem, 2.8vw, 0.78rem);
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .meet-poster .poster-theme {
+    margin: 0.35rem auto 0.55rem;
+    font: 400 clamp(1rem, 4.5vw, 1.25rem) / 1.35 "Kaushan Script", cursive;
+    color: #063d2a !important;
+  }
+
+  .meet-poster .poster-theme::after {
+    width: 42%;
+    height: 3px;
+    margin-top: 0.4rem;
+  }
+
+  .meet-poster .poster-details {
+    flex-direction: column;
+    gap: 0.65rem;
+    margin: 0.4rem 0 0.5rem;
+    font-size: clamp(0.85rem, 3.5vw, 1rem);
+    font-weight: 800;
+    color: #063d2a !important;
+  }
+
+  .meet-poster .poster-countdown {
+    min-width: 0;
+    width: fit-content;
+    margin: 0 auto;
+    padding: 0.55rem 1.25rem;
+    border: 2px solid #c8a354;
+    border-radius: 999px;
+    background: linear-gradient(125deg, #0f5a3c, #002719);
+    box-shadow: 0 6px 14px #123f2d40;
+    font-size: clamp(0.9rem, 4vw, 1.1rem);
+  }
+
+  .meet-poster .poster-days {
+    font-size: 1.45em;
+  }
+
+  .meet-poster .poster-sports {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin: 0;
+    padding: 0;
+    position: relative;
+    z-index: 2;
+    font-size: 1.15rem;
+    /* push icons down onto the green band */
+    transform: translateY(2.25rem);
+  }
+
+  .meet-poster .poster-sports {
+    align-items: center;
+  }
+
+  .meet-poster .poster-sports span {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 2.35rem !important;
+    height: 2.35rem !important;
+    line-height: 1 !important;
+    padding: 0 !important;
+    border: 2px solid #f5e3a1 !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+    box-shadow: 0 2px 8px #0005 !important;
+    font-size: 1.05rem !important;
+    text-align: center !important;
+    filter: drop-shadow(0 1px 1px #0006);
+  }
+
+  .top3-grid {
+    grid-template-columns: 1fr;
+  }
+  .top3-card {
+    min-height: 80px;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  .stat-grid {
+    min-height: 270px;
+  }
+  .teams-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .team-detail-hero {
+    padding: 1rem;
+  }
+  .tally-board {
+    padding: 0.75rem;
+  }
+  .tally-hero .meet-art {
+    height: 85px;
+  }
+}
+
+@media (max-width: 550px) {
+  .main-container {
+    width: calc(100% - 24px);
+  }
+  .meet-poster {
+    padding: 1rem 0.7rem 3.2rem;
+  }
+  .meet-art {
+    max-height: 160px;
+  }
+  .meet-poster .poster-bohol {
+    font-size: clamp(2.2rem, 13vw, 3.1rem) !important;
+  }
+  .meet-poster .poster-year {
+    font-size: clamp(2.3rem, 14vw, 3.3rem) !important;
+  }
+  .teams-grid {
+    grid-template-columns: 1fr;
+  }
+  .teams-grid .school-card {
+    min-height: 150px;
+  }
+  .division-filters {
+    gap: 0.3rem;
+  }
+  .division-filters .filter-btn {
+    font-size: 0.54rem;
+    padding: 0.65rem 0.15rem !important;
+  }
+  .medal-table th {
+    font-size: 0.55rem;
+    padding: 0.5rem 2px;
+  }
+  .medal-table td {
+    font-size: clamp(0.82rem, 4vw, 1.1rem);
+    padding: 0.55rem 2px;
+  }
+  .medal-table td:nth-child(2) {
+    font-size: clamp(0.7rem, 3vw, 0.9rem);
+  }
+  .medal-table .team-fullname {
+    display: none;
+  }
+  .rank-badge {
+    width: 1.45rem;
+    height: 1.45rem;
+    font-size: 0.85rem;
+  }
+  .tally-areas {
+    font-size: 0.5rem;
+    letter-spacing: 0.1em;
+  }
+  .tally-title {
+    font-size: 1.4rem;
+  }
+  .feed-heading {
+    display: block;
+  }
+  .shortcut-grid {
+    gap: 0.55rem;
+  }
+  .btn-glass {
+    min-height: 80px;
+  }
+}
+
+/* Center sport icons in their circles (all breakpoints) */
+.poster-sports {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+.poster-sports span {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 2.35rem;
+  height: 2.35rem;
+  line-height: 1 !important;
+  padding: 0;
+  border: 2px solid #c8a354;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: 0 2px 6px #123f2d22;
+  font-size: 1.05rem;
+  text-align: center;
+}
+
+/* SPORT CIRCLES FORCE TRANSPARENT */
+.poster-sports span,
+.meet-poster .poster-sports span {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* Date → venue → countdown (all breakpoints) */
+.poster-details {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.55rem !important;
+}
+
+.poster-meta {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 0.3rem !important;
+}
+
+.poster-date,
+.poster-venue {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.4rem;
+  font-weight: 800;
+  color: #063d2a;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+.poster-date i,
+.poster-venue i {
+  color: #c8a354;
+  font-size: 0.95em;
+}
+
+.poster-venue {
+  font-size: 0.92em;
+  font-weight: 700;
+  color: #0f5a3c;
+}
+
+.poster-countdown {
+  margin-top: 0.15rem;
+}
+
+@media (max-width: 760px) {
+  .meet-poster .poster-details {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 0.65rem !important;
+    margin: 0.4rem 0 0.5rem;
+    font-size: clamp(0.85rem, 3.5vw, 1rem);
+  }
+
+  .meet-poster .poster-meta {
+    gap: 0.35rem !important;
+  }
+
+  .meet-poster .poster-date,
+  .meet-poster .poster-venue {
+    font-size: clamp(0.88rem, 3.6vw, 1.05rem);
+    color: #063d2a !important;
+    -webkit-text-fill-color: #063d2a;
+  }
+
+  .meet-poster .poster-venue {
+    color: #0a4a32 !important;
+    -webkit-text-fill-color: #0a4a32;
+    font-weight: 700;
+  }
+
+  .meet-poster .poster-date i,
+  .meet-poster .poster-venue i {
+    color: #b88918 !important;
+  }
+}
+
+@media (min-width: 761px) {
+  .poster-details {
+    gap: 0.65rem !important;
+    margin: 1.2% 0;
+    font-size: 2cqi;
+  }
+
+  .poster-meta {
+    gap: 0.25rem !important;
+  }
+
+  .poster-date,
+  .poster-venue {
+    font-size: 2cqi;
+  }
+
+  .poster-venue {
+    font-size: 1.75cqi;
+  }
+}

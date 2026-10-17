@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { AppData } from "./App";
-import { MEET_DATE, MEET_OPENING_AT } from "./meet-config";
+import { MEET_DATE, MEET_OPENING_AT, MEET_VENUE } from "./meet-config";
 import {
   compareMedals,
   DIVISIONS,
@@ -189,7 +189,9 @@ function MeetCountdown() {
       <>
         <span className="poster-days">{days}</span>
         <span className="poster-days-caption">
-          {days === 1 ? "Day" : "Days"}<br />to go
+          {days === 1 ? "Day" : "Days"}
+          <br />
+          to go
         </span>
       </>
     );
@@ -198,7 +200,11 @@ function MeetCountdown() {
     const minutes = Math.floor((distance % 3_600_000) / 60_000);
     const seconds = Math.floor((distance % 60_000) / 1_000);
     accessibleValue = `${hours} hours, ${minutes} minutes, ${seconds} seconds to go`;
-    value = <span className="poster-countdown-value">{hours}h {minutes}m {seconds}s</span>;
+    value = (
+      <span className="poster-countdown-value">
+        {hours}h {minutes}m {seconds}s
+      </span>
+    );
   } else if (distance > -day) {
     accessibleValue = "The event is today";
     value = <span className="poster-countdown-value">Today</span>;
@@ -208,9 +214,15 @@ function MeetCountdown() {
   }
 
   return (
-    <span className="poster-countdown" role="timer" aria-label={accessibleValue}>
+    <span
+      className="poster-countdown"
+      role="timer"
+      aria-label={accessibleValue}
+    >
       <i className="bi bi-stopwatch" aria-hidden="true" />
-      <span className="poster-countdown-content" aria-hidden="true">{value}</span>
+      <span className="poster-countdown-content" aria-hidden="true">
+        {value}
+      </span>
     </span>
   );
 }
@@ -223,12 +235,23 @@ function MeetPoster() {
     >
       <MeetArt />
       <h1 className="poster-title">
-        <span className="poster-district">Bohol Provincial Athletic Meet 2026</span>
+        <span className="poster-bohol">Bohol</span>
+        <span className="poster-event">Provincial Athletic Meet</span>
+        <span className="poster-year">2026</span>
       </h1>
       <p className="poster-districts">ELEMENTARY · SECONDARY · PARAGAMES</p>
       <p className="poster-theme">“Strong Together. Greater Tomorrow”</p>
       <div className="poster-details">
-        <span className="poster-date">▣ &nbsp; {MEET_DATE}</span>
+        <div className="poster-meta">
+          <span className="poster-date">
+            <i className="bi bi-calendar3" aria-hidden="true" />
+            {MEET_DATE}
+          </span>
+          <span className="poster-venue">
+            <i className="bi bi-geo-alt-fill" aria-hidden="true" />
+            {MEET_VENUE}
+          </span>
+        </div>
         <MeetCountdown />
       </div>
       <div className="poster-sports" aria-hidden="true">
@@ -610,9 +633,17 @@ export function EventsPage({
   const [assignedOnly, setAssignedOnly] = useState(storedFilters.assignedOnly);
   const [filtersOpen, setFiltersOpen] = useState(false);
   useEffect(() => {
-    window.sessionStorage.setItem(EVENT_FILTERS_KEY, JSON.stringify({
-      query, sport, category, division, status, assignedOnly,
-    }));
+    window.sessionStorage.setItem(
+      EVENT_FILTERS_KEY,
+      JSON.stringify({
+        query,
+        sport,
+        category,
+        division,
+        status,
+        assignedOnly,
+      }),
+    );
   }, [query, sport, category, division, status, assignedOnly]);
   const sports = useMemo(
     () =>
@@ -625,9 +656,10 @@ export function EventsPage({
       ].sort(),
     [data.events],
   );
-  const scopedEvents = assignedOnly && profile
-    ? data.events.filter((event) => event.coordinatorid === profile.id)
-    : data.events;
+  const scopedEvents =
+    assignedOnly && profile
+      ? data.events.filter((event) => event.coordinatorid === profile.id)
+      : data.events;
   const filtered = scopedEvents.filter((event) => {
     const search = `${event.title} ${event.sport_name ?? ""}`.toLowerCase();
     return (
@@ -648,7 +680,10 @@ export function EventsPage({
     const latest = data.events
       .map((event) => event.updatedat)
       .filter((value): value is string => Boolean(value))
-      .map((value) => new Date(/[zZ]|[+-]\d\d:\d\d$/.test(value) ? value : `${value}Z`))
+      .map(
+        (value) =>
+          new Date(/[zZ]|[+-]\d\d:\d\d$/.test(value) ? value : `${value}Z`),
+      )
       .filter((value) => !Number.isNaN(value.getTime()))
       .sort((a, b) => b.getTime() - a.getTime())[0];
     return latest
@@ -665,40 +700,62 @@ export function EventsPage({
   return (
     <section className="panel events-page">
       <div className="page-heading events-heading">
-        <h1><i className="bi bi-calendar-event-fill" aria-hidden="true" /> Event Records</h1>
+        <h1>
+          <i className="bi bi-calendar-event-fill" aria-hidden="true" /> Event
+          Records
+        </h1>
         <p>Bohol Provincial Athletic Meet 2026 Event Records</p>
       </div>
       <div className="events-summary desktop-events-summary">
         <div className="event-stat">
-          <span>Total Events <i className="bi bi-calendar-event" aria-hidden="true" /></span>
+          <span>
+            Total Events{" "}
+            <i className="bi bi-calendar-event" aria-hidden="true" />
+          </span>
           <strong>{data.events.length}</strong>
         </div>
         <div className="event-stat">
-          <span>Completed <i className="bi bi-check-circle" aria-hidden="true" /></span>
+          <span>
+            Completed <i className="bi bi-check-circle" aria-hidden="true" />
+          </span>
           <strong>{finished}</strong>
         </div>
         <div className="event-stat">
-          <span>Pending <i className="bi bi-clock" aria-hidden="true" /></span>
+          <span>
+            Pending <i className="bi bi-clock" aria-hidden="true" />
+          </span>
           <strong>{data.events.length - finished}</strong>
         </div>
         <div className="event-stat">
-          <span>Last Update <i className="bi bi-arrow-clockwise" aria-hidden="true" /></span>
+          <span>
+            Last Update{" "}
+            <i className="bi bi-arrow-clockwise" aria-hidden="true" />
+          </span>
           <strong className="last-update-value">{lastUpdated}</strong>
         </div>
       </div>
       <div className="mobile-events-summary" aria-label="Meet progress summary">
         <div className="event-stat">
-          <span>Finished <i className="bi bi-check-circle-fill" aria-hidden="true" /></span>
-          <strong>{finished} / {data.events.length}</strong>
+          <span>
+            Finished{" "}
+            <i className="bi bi-check-circle-fill" aria-hidden="true" />
+          </span>
+          <strong>
+            {finished} / {data.events.length}
+          </strong>
           <div className="progress-bar-glass">
             <span className="progress-fill" style={{ width: `${percent}%` }} />
             <b>{percent}%</b>
           </div>
         </div>
         <div className="event-stat">
-          <span>Last Update <i className="bi bi-clock-history" aria-hidden="true" /></span>
+          <span>
+            Last Update <i className="bi bi-clock-history" aria-hidden="true" />
+          </span>
           <strong className="last-update-value">{lastUpdated}</strong>
-          <small><i className="live-dot" /> Live Data</small>
+          <small>
+            <i className="live-dot" /> Live Data
+          </small>
         </div>
       </div>
 
@@ -713,14 +770,23 @@ export function EventsPage({
                 setAssignedOnly((current) => !current);
               }}
             >
-              <i className={assignedOnly ? "bi bi-list" : "bi bi-person-lines-fill"} aria-hidden="true" />{" "}
+              <i
+                className={
+                  assignedOnly ? "bi bi-list" : "bi bi-person-lines-fill"
+                }
+                aria-hidden="true"
+              />{" "}
               {assignedOnly ? "View all events" : "View assigned events"}
             </button>
           )}
           {admin && (
-            <button type="button" className="button-outline pending-report-button"
-              onClick={() => navigate("/reports/pending")}>
-              <i className="bi bi-clock-history" aria-hidden="true" /> Pending report
+            <button
+              type="button"
+              className="button-outline pending-report-button"
+              onClick={() => navigate("/reports/pending")}
+            >
+              <i className="bi bi-clock-history" aria-hidden="true" /> Pending
+              report
             </button>
           )}
           {admin && (
@@ -731,11 +797,22 @@ export function EventsPage({
         </div>
       </div>
 
-      <div className="division-filters events-division-filters" role="group" aria-label="Event division">
+      <div
+        className="division-filters events-division-filters"
+        role="group"
+        aria-label="Event division"
+      >
         {["Overall", "Elementary", "Secondary", "Paragames"].map((value) => (
-          <button key={value} type="button"
-            className={division === value ? "filter-btn active-filter" : "filter-btn"}
-            onClick={() => setDivision(value)}>{value}</button>
+          <button
+            key={value}
+            type="button"
+            className={
+              division === value ? "filter-btn active-filter" : "filter-btn"
+            }
+            onClick={() => setDivision(value)}
+          >
+            {value}
+          </button>
         ))}
       </div>
 
@@ -743,17 +820,31 @@ export function EventsPage({
         <label>
           <i className="bi bi-search" aria-hidden="true" />
           <span className="sr-only">Search events</span>
-          <input type="search" value={query} onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search event title…" />
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search event title…"
+          />
         </label>
-        <button type="button" onClick={() => setFiltersOpen((open) => !open)}
-          aria-expanded={filtersOpen} aria-controls="eventFilters">
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((open) => !open)}
+          aria-expanded={filtersOpen}
+          aria-controls="eventFilters"
+        >
           <i className="bi bi-sliders" aria-hidden="true" /> Filters
         </button>
       </div>
 
-      <div className={filtersOpen ? "filter-grid events-filter-grid open" : "filter-grid events-filter-grid"}
-        id="eventFilters">
+      <div
+        className={
+          filtersOpen
+            ? "filter-grid events-filter-grid open"
+            : "filter-grid events-filter-grid"
+        }
+        id="eventFilters"
+      >
         <label>
           Search
           <input
@@ -811,17 +902,17 @@ export function EventsPage({
             <span>Action</span>
           </div>
           <div className="event-list">
-          {filtered.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              data={data}
-              navigate={navigate}
-              canEdit={Boolean(
-                profile && (admin || event.coordinatorid === profile.id),
-              )}
-            />
-          ))}
+            {filtered.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                data={data}
+                navigate={navigate}
+                canEdit={Boolean(
+                  profile && (admin || event.coordinatorid === profile.id),
+                )}
+              />
+            ))}
           </div>
         </div>
       ) : (
@@ -842,23 +933,34 @@ function EventCard({
   navigate: Nav;
   canEdit: boolean;
 }) {
-  const resultLines = event.status === "Completed"
-    ? [
-        ["🥇", event.goldteamid, event.gold_winner_name],
-        ["🥈", event.silverteamid, event.silver_winner_name],
-        ["🥉", event.bronzeteamid, event.bronze_winner_name],
-      ].filter(([, teamId, names]) => Boolean(teamId || winnerNames(names as string | null).length))
-    : [];
+  const resultLines =
+    event.status === "Completed"
+      ? [
+          ["🥇", event.goldteamid, event.gold_winner_name],
+          ["🥈", event.silverteamid, event.silver_winner_name],
+          ["🥉", event.bronzeteamid, event.bronze_winner_name],
+        ].filter(([, teamId, names]) =>
+          Boolean(teamId || winnerNames(names as string | null).length),
+        )
+      : [];
   return (
     <article className="event-card">
       <div className="event-card-summary">
         <div className="event-record-sport">
-          <span className={event.status === "Completed" ? "record-status completed" : "record-status pending"}>
+          <span
+            className={
+              event.status === "Completed"
+                ? "record-status completed"
+                : "record-status pending"
+            }
+          >
             <i aria-hidden="true" /> {event.status}
           </span>
           <div className="event-badges">
             <span className="sport-badge">
-              <span className="sport-icon" aria-hidden="true">{sportIcon(event.sport_name)}</span>
+              <span className="sport-icon" aria-hidden="true">
+                {sportIcon(event.sport_name)}
+              </span>
               {event.sport_name || "Sport"}
             </span>
             <span className="division-badge">{event.division}</span>
@@ -866,20 +968,29 @@ function EventCard({
         </div>
         <div className="event-record-title">
           <h3>{event.title}</h3>
-          <small>{event.sport_category || "Open"} · {event.event_category || "Event"}</small>
+          <small>
+            {event.sport_category || "Open"} · {event.event_category || "Event"}
+          </small>
         </div>
         <div className="event-record-winners">
-          {resultLines.length ? resultLines.map(([medal, teamId, names]) => (
-            <span key={medal as string}>
-              {medal as string} {teamName(data, teamId as number | null)}{" "}
-              {winnerNames(names as string | null).join(", ")}
-            </span>
-          )) : <span className="no-results">– No results recorded</span>}
+          {resultLines.length ? (
+            resultLines.map(([medal, teamId, names]) => (
+              <span key={medal as string}>
+                {medal as string} {teamName(data, teamId as number | null)}{" "}
+                {winnerNames(names as string | null).join(", ")}
+              </span>
+            ))
+          ) : (
+            <span className="no-results">– No results recorded</span>
+          )}
         </div>
         <div className="event-actions">
           {canEdit && (
-            <button type="button" className="button-outline"
-              onClick={() => navigate(`/scoring/${event.id}`)}>
+            <button
+              type="button"
+              className="button-outline"
+              onClick={() => navigate(`/scoring/${event.id}`)}
+            >
               {event.status === "Completed" ? "Update" : "Submit"}
             </button>
           )}
