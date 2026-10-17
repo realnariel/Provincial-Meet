@@ -221,29 +221,9 @@ function MeetPoster() {
       className="meet-poster"
       aria-label="Bohol Provincial Athletic Meet 2026"
     >
-      <div className="poster-motto">
-        One Province
-        <br />
-        One Spirit
-        <br />
-        Brighter Futures
-      </div>
-      <div className="poster-values">
-        DISCIPLINE
-        <br />
-        SPORTSMANSHIP
-        <br />
-        EXCELLENCE
-        <br />
-        UNITY
-      </div>
       <MeetArt />
       <h1 className="poster-title">
-        <span className="poster-district">Province of Bohol</span>
-        <span className="poster-event-line">
-          <span className="poster-event">Athletic Meet</span>
-          <span className="poster-year">2026</span>
-        </span>
+        <span className="poster-district">Bohol Provincial Athletic Meet 2026</span>
       </h1>
       <p className="poster-districts">ELEMENTARY · SECONDARY · PARAGAMES</p>
       <p className="poster-theme">“Strong Together. Greater Tomorrow”</p>
@@ -257,24 +237,6 @@ function MeetPoster() {
         <span>🏸</span>
         <span>🏐</span>
         <span>🏆</span>
-      </div>
-      <div className="poster-corner poster-corner-left">
-        PLAY
-        <br />
-        LEARN
-        <br />
-        LEAD
-        <br />
-        INSPIRE
-      </div>
-      <div className="poster-corner poster-corner-right">
-        SPORTS
-        <br />
-        BUILD
-        <br />
-        BETTER
-        <br />
-        PEOPLE
       </div>
     </section>
   );

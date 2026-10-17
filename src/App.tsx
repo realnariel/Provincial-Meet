@@ -306,10 +306,12 @@ export default function App() {
               <img src="/images/r7_logo.png" alt="DepEd Region VII" />
               <img src="/images/bohol_logo.png" alt="Province of Bohol" />
               <img src="/images/sdobohol_logo.png" alt="SDO Bohol" />
+              <img src="/images/candijay_logo.png" alt="Municipality of Candijay" />
+              <img src="/images/candijay_district_logo.png" alt="Candijay District" />
             </span>
-            <span>
-              <small>Division of Bohol</small>
-              <strong>Bohol Provincial Meet</strong>
+            <span className="brand-title">
+              <strong>Bohol</strong>
+              <small>Provincial Meet</small>
             </span>
           </a>
           <button type="button" className="desktop-menu-toggle"
