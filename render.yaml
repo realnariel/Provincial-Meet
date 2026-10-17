@@ -2,7 +2,6 @@ services:
   - type: web
     name: provincial-meet
     runtime: static
-    rootDir: react-app
     buildCommand: npm ci && npm run build
     staticPublishPath: ./dist
     envVars:

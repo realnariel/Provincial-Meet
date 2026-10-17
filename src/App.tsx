@@ -191,11 +191,11 @@ export default function App() {
         <p>
           The MVC site and its database are untouched. When your new Supabase
           project is ready, add its project URL and publishable key to{" "}
-          <code>react-app/.env.local</code>.
+          <code>.env.local</code>.
         </p>
         <p>
           The matching <code>prov_*</code> schema is in{" "}
-          <code>react-app/supabase/schema.sql</code>.
+          <code>supabase/schema.sql</code>.
         </p>
       </section>
     );

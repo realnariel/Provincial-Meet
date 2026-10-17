@@ -7,7 +7,7 @@ migration. Do not cut over until every item below is verified in the new app.
 
 ## Implementation snapshot (2026-10-15)
 
-The first React implementation is in `react-app/`. It compiles as a static site
+The React implementation is in the repository root. It compiles as a static site
 and includes the public screens, event/result forms, qualifier editing,
 coordinator account controls, and first-pass reports. The new SQL keeps the
 existing `prov_*` names and adds only the Auth-link fields needed for a browser
@@ -33,7 +33,7 @@ to coordinators for their assigned events. TypeScript and production build pass,
 desktop/mobile and print comparison is still outstanding.
 
 The read-only congressional catalog export has been packaged as a guarded SQL
-import (`react-app/supabase/import-congressional-catalog.sql`): 412 events,
+import (`supabase/import-congressional-catalog.sql`): 412 events,
 25 sports, all Pending. It has **not** been executed in the new project yet.
 The audit of source-category ambiguities is alongside it.
 
@@ -61,76 +61,76 @@ source MVC database and its data are untouched.
 ## Public feature parity
 
 - [ ] Home: hero, meet details, live medal summary, recent results, responsive
-  layout, and empty/loading/error states.
+      layout, and empty/loading/error states.
 - [ ] Rankings: overall, Secondary, Elementary, and Paragames standings with
-  existing tie ordering and filters. Auto-rotation is implemented; verify with
-  real results and browser timing.
+      existing tie ordering and filters. Auto-rotation is implemented; verify with
+      real results and browser timing.
 - [ ] Events: title search, sport/category/division/status filters, result
-  display, assigned-event view for logged-in coordinators.
+      display, assigned-event view for logged-in coordinators.
 - [ ] Teams: dashboard, division filters, team detail, medal and event lists.
 - [ ] Mobile navigation, logos/images, app manifest/install prompt, and
-  existing accessibility/keyboard behavior.
+      existing accessibility/keyboard behavior.
 
 ## Sign-in and administration
 
 - [ ] Username sign-in, sign-out, admin-only password reset, denied-access
-  handling, and session persistence.
+      handling, and session persistence.
 - [ ] Admin creates, edits, resets credentials for, and deletes coordinators;
-  admin/coordinator role boundaries are enforced in database policies/functions,
-  not only hidden buttons.
+      admin/coordinator role boundaries are enforced in database policies/functions,
+      not only hidden buttons.
 - [ ] Admin creates, edits, deletes events and assigns/reassigns coordinators
-  individually or in bulk.
+      individually or in bulk.
 - [ ] Coordinators may only modify assigned events, while admins may modify all
-  events. Prevent cross-event ID substitution and partial unauthorized bulk edits.
+      events. Prevent cross-event ID substitution and partial unauthorized bulk edits.
 - [ ] Submit, update, and clear results, including medal teams and winner names;
-  preserve pending/completed transitions and distinct-medal-team rules.
+      preserve pending/completed transitions and distinct-medal-team rules.
 - [ ] Qualifier and delegation management: add/edit/delete, bulk operations,
-  winner import, team/district/school/gender/size/role fields, autocomplete,
-  and authorization checks.
+      winner import, team/district/school/gender/size/role fields, autocomplete,
+      and authorization checks.
 
 ## Reports and exports
 
 - [ ] General Official Report: four standings tables, acronym labels,
-  signatories, print/PDF layout.
+      signatories, print/PDF layout.
 - [ ] All Events Results Report: sport/event/division/team filters, signatories,
-  print/PDF and Excel export.
+      print/PDF and Excel export.
 - [ ] Pending Events Report: division/sport/Boys-Girls-Mixed grouping and print.
-  Grouping is implemented; print comparison remains.
+      Grouping is implemented; print comparison remains.
 - [ ] District/Regional Qualifier Report: participant and staff grouping,
-  counts, print and spreadsheet export where currently available.
+      counts, print and spreadsheet export where currently available.
 - [ ] Player Medal Report and Player Event Report: all existing filters, totals,
-  drill-down links, and print/PDF.
+      drill-down links, and print/PDF.
 - [ ] Any qualifier edit/report entry points and filter-state persistence used
-  by the existing report pages.
+      by the existing report pages.
 
 ## New database and security
 
 - [ ] Create a fresh schema for teams, events, qualifiers, coordinator profiles,
-  standings, and necessary database functions. Omit cron-only tables if no
-  scheduled task remains.
+      standings, and necessary database functions. Omit cron-only tables if no
+      scheduled task remains.
 - [ ] Export title, sport name, `sport_category`, `event_category`, and division
-  from the old database, then import to the new project with status `Pending`.
-  The existing setup SQL references `cong_events` and is **not** directly usable
-  in the new database.
+      from the old database, then import to the new project with status `Pending`.
+      The existing setup SQL references `cong_events` and is **not** directly usable
+      in the new database.
 - [ ] Seed six official teams exactly once. Do not seed a reusable default
-  password into a browser-accessible table.
+      password into a browser-accessible table.
 - [ ] Use Supabase Auth for accounts and per-table Row Level Security for public
-  reads, admin writes, and assignment-scoped coordinator writes. Use trusted
-  server-side functions for privileged account administration and atomic
-  multi-row changes.
+      reads, admin writes, and assignment-scoped coordinator writes. Use trusted
+      server-side functions for privileged account administration and atomic
+      multi-row changes.
 - [ ] Test anonymous, coordinator, and admin permissions, including hostile
-  direct API requests. Check view/function access separately from table access.
+      direct API requests. Check view/function access separately from table access.
 - [ ] Keep the old project's credentials and data separate; never run schema
-  changes against the old shared competition database.
+      changes against the old shared competition database.
 
 ## Verification and cutover
 
 - [ ] Compare every route and key screen at desktop and mobile widths against
-  the MVC original. Verify print pages and exported spreadsheets visually.
+      the MVC original. Verify print pages and exported spreadsheets visually.
 - [ ] Run feature and authorization regression tests against the new project.
 - [ ] Load-test public standings/events traffic and coordinator result entry.
 - [ ] Keep MVC deployed as a fallback until all parity checks pass and the new
-  static site works with the new Supabase project.
+      static site works with the new Supabase project.
 
 ## Inputs still needed
 

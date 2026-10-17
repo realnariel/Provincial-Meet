@@ -1,19 +1,14 @@
-# Build results
-[Bb]in/
-[Oo]bj/
-*.exe
-*.dll
-*.pdb
-*.user
-*.lock.json
-.vs/
-.vscode/
-!.vscode/
-.vscode/*
-!.vscode/settings.json
-!.vscode/extensions.json
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
 
-# Local credentials and ASP.NET encryption keys
+# Production build outputs
+dist/
+dist-ssr/
+*.tsbuildinfo
+
+# Environment variables & local credentials
 .env
 .env.*
 !.env.example
@@ -25,8 +20,35 @@ keys/
 *.key
 *.pem
 
-# Standalone React application
-react-app/node_modules/
-react-app/dist/
-react-app/.env.local
-react-app/*.tsbuildinfo
+# Supabase CLI temp/local state
+supabase/.temp/
+.temp/
+
+# Editor & IDE settings
+.vs/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.suo
+*.user
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS metadata
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Legacy build artifacts (ASP.NET / .NET)
+[Bb]in/
+[Oo]bj/
+*.exe
+*.dll
+*.pdb
+*.lock.json
+!package-lock.json
