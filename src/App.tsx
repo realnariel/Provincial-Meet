@@ -116,7 +116,10 @@ export default function App() {
   useEffect(() => {
     if (!reportOpen) return;
     const closeOutside = (event: PointerEvent) => {
-      if (event.target instanceof Node && !mobileNavRef.current?.contains(event.target))
+      if (
+        event.target instanceof Node &&
+        !mobileNavRef.current?.contains(event.target)
+      )
         setReportOpen(false);
     };
     const closeEscape = (event: KeyboardEvent) => {
@@ -146,28 +149,64 @@ export default function App() {
   }, [desktopMenuOpen]);
 
   useEffect(() => {
-    const item = mobileNavRef.current?.querySelector<HTMLElement>(".mobile-nav-item.active");
-    item?.scrollIntoView({ behavior: "auto", block: "nearest", inline: "nearest" });
+    const item = mobileNavRef.current?.querySelector<HTMLElement>(
+      ".mobile-nav-item.active",
+    );
+    item?.scrollIntoView({
+      behavior: "auto",
+      block: "nearest",
+      inline: "nearest",
+    });
   }, [path]);
 
-  const mobileLink = (to: string, label: string, icon: string, active = path === to) => (
-    <a href={to} className={active ? "mobile-nav-item active" : "mobile-nav-item"}
+  const mobileLink = (
+    to: string,
+    label: string,
+    icon: string,
+    active = path === to,
+  ) => (
+    <a
+      href={to}
+      className={active ? "mobile-nav-item active" : "mobile-nav-item"}
       aria-current={active ? "page" : undefined}
-      onClick={(event) => { event.preventDefault(); navigate(to); }}>
+      onClick={(event) => {
+        event.preventDefault();
+        navigate(to);
+      }}
+    >
       <i className={`bi ${icon}`} aria-hidden="true" />
       <span>{label}</span>
     </a>
   );
 
   const reportLink = (to: string, label: string) => (
-    <a href={to} aria-current={path === to ? "page" : undefined}
-      onClick={(event) => { event.preventDefault(); navigate(to); }}>{label}</a>
+    <a
+      href={to}
+      aria-current={path === to ? "page" : undefined}
+      onClick={(event) => {
+        event.preventDefault();
+        navigate(to);
+      }}
+    >
+      {label}
+    </a>
   );
 
-  const drawerLink = (to: string, label: string, icon: string, active = path === to) => (
-    <a href={to} className={active ? "desktop-drawer-link active" : "desktop-drawer-link"}
+  const drawerLink = (
+    to: string,
+    label: string,
+    icon: string,
+    active = path === to,
+  ) => (
+    <a
+      href={to}
+      className={active ? "desktop-drawer-link active" : "desktop-drawer-link"}
       aria-current={active ? "page" : undefined}
-      onClick={(event) => { event.preventDefault(); navigate(to); }}>
+      onClick={(event) => {
+        event.preventDefault();
+        navigate(to);
+      }}
+    >
       <i className={`bi ${icon}`} aria-hidden="true" />
       <span>{label}</span>
       <i className="bi bi-chevron-right drawer-chevron" aria-hidden="true" />
@@ -258,7 +297,13 @@ export default function App() {
         data={data}
         profile={profile!}
         admin={admin}
-        section={path.endsWith("/coordinators") ? "coordinators" : path.endsWith("/assignments") ? "assignments" : "events"}
+        section={
+          path.endsWith("/coordinators")
+            ? "coordinators"
+            : path.endsWith("/assignments")
+              ? "assignments"
+              : "events"
+        }
         refresh={refresh}
         navigate={navigate}
       />
@@ -279,7 +324,12 @@ export default function App() {
     );
   else if (path.startsWith("/reports"))
     content = (
-      <CongMeetReportsPage data={data} path={path} admin={admin} navigate={navigate} />
+      <CongMeetReportsPage
+        data={data}
+        path={path}
+        admin={admin}
+        navigate={navigate}
+      />
     );
   else
     content = (
@@ -302,75 +352,171 @@ export default function App() {
             }}
           >
             <span className="brand-logos">
-              <img src="/images/deped_logo.png" alt="DepEd" className="brand-logo-deped" />
+              <img
+                src="/images/deped_logo.png"
+                alt="DepEd"
+                className="brand-logo-deped"
+              />
               <img src="/images/r7_logo.png" alt="DepEd Region VII" />
               <img src="/images/bohol_logo.png" alt="Province of Bohol" />
               <img src="/images/sdobohol_logo.png" alt="SDO Bohol" />
-              <img src="/images/candijay_logo.png" alt="Municipality of Candijay" />
-              <img src="/images/candijay_district_logo.png" alt="Candijay District" />
+              <img
+                src="/images/candijay_logo.png"
+                alt="Municipality of Candijay"
+              />
+              <img
+                src="/images/candijay_district_logo.png"
+                alt="Candijay District"
+              />
             </span>
             <span className="brand-title">
-              <strong>Bohol</strong>
-              <small>Provincial Meet</small>
+              <strong>Bohol Provincial</strong>
+              <small>Athletic Meet</small>
             </span>
           </a>
-          <button type="button" className="desktop-menu-toggle"
-            aria-label="Open menu" aria-expanded={desktopMenuOpen}
+          <button
+            type="button"
+            className="desktop-menu-toggle"
+            aria-label="Open menu"
+            aria-expanded={desktopMenuOpen}
             aria-controls="desktopMenuDrawer"
-            onClick={() => setDesktopMenuOpen(true)}>
+            onClick={() => setDesktopMenuOpen(true)}
+          >
             <i className="bi bi-list" aria-hidden="true" />
           </button>
         </div>
       </header>
       {desktopMenuOpen && (
         <div className="desktop-menu-layer">
-          <button type="button" className="desktop-menu-scrim" aria-label="Close menu"
-            onClick={() => setDesktopMenuOpen(false)} />
-          <aside className="desktop-menu-drawer" id="desktopMenuDrawer"
-            role="dialog" aria-modal="true" aria-label="Main menu">
+          <button
+            type="button"
+            className="desktop-menu-scrim"
+            aria-label="Close menu"
+            onClick={() => setDesktopMenuOpen(false)}
+          />
+          <aside
+            className="desktop-menu-drawer"
+            id="desktopMenuDrawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Main menu"
+          >
             <div className="desktop-menu-heading">
-              <h2><i className="bi bi-grid-fill" aria-hidden="true" /> Menu</h2>
-              <button type="button" ref={desktopMenuCloseRef} aria-label="Close menu"
-                onClick={() => setDesktopMenuOpen(false)}>
+              <h2>
+                <i className="bi bi-grid-fill" aria-hidden="true" /> Menu
+              </h2>
+              <button
+                type="button"
+                ref={desktopMenuCloseRef}
+                aria-label="Close menu"
+                onClick={() => setDesktopMenuOpen(false)}
+              >
                 <i className="bi bi-x-lg" aria-hidden="true" />
               </button>
             </div>
             <nav className="desktop-drawer-nav" aria-label="Main menu links">
               {drawerLink("/", "Home", "bi-house-door-fill")}
               {drawerLink("/rankings", "Rankings", "bi-trophy-fill")}
-              {drawerLink("/events", "Events", "bi-calendar-event-fill", path === "/events" || path.startsWith("/scoring") || path.startsWith("/delegation"))}
-              {drawerLink("/teams", "Teams", "bi-people-fill", path.startsWith("/teams"))}
+              {drawerLink(
+                "/events",
+                "Events",
+                "bi-calendar-event-fill",
+                path === "/events" ||
+                  path.startsWith("/scoring") ||
+                  path.startsWith("/delegation"),
+              )}
+              {drawerLink(
+                "/teams",
+                "Teams",
+                "bi-people-fill",
+                path.startsWith("/teams"),
+              )}
 
               <div className="desktop-menu-section">
-                <span><i className="bi bi-shield-lock-fill" aria-hidden="true" /> Account</span>
-                {profile && <p>Logged in as:<strong>{profile.fullname}</strong></p>}
+                <span>
+                  <i className="bi bi-shield-lock-fill" aria-hidden="true" />{" "}
+                  Account
+                </span>
+                {profile && (
+                  <p>
+                    Logged in as:<strong>{profile.fullname}</strong>
+                  </p>
+                )}
               </div>
 
-              {admin && drawerLink("/manage/coordinators", "Coordinators", "bi-person-badge-fill")}
-              {admin && drawerLink("/manage", "Manage Events", "bi-sliders", path === "/manage" || path === "/manage/assignments")}
-              {staff && <div className="desktop-report-group">
-                <div className={path.startsWith("/reports") ? "desktop-drawer-link active desktop-report-label" : "desktop-drawer-link desktop-report-label"}>
-                  <i className="bi bi-file-earmark-bar-graph-fill" aria-hidden="true" />
-                  <span>Official Reports</span>
-                  <i className="bi bi-chevron-down drawer-chevron" aria-hidden="true" />
+              {admin &&
+                drawerLink(
+                  "/manage/coordinators",
+                  "Coordinators",
+                  "bi-person-badge-fill",
+                )}
+              {admin &&
+                drawerLink(
+                  "/manage",
+                  "Manage Events",
+                  "bi-sliders",
+                  path === "/manage" || path === "/manage/assignments",
+                )}
+              {staff && (
+                <div className="desktop-report-group">
+                  <div
+                    className={
+                      path.startsWith("/reports")
+                        ? "desktop-drawer-link active desktop-report-label"
+                        : "desktop-drawer-link desktop-report-label"
+                    }
+                  >
+                    <i
+                      className="bi bi-file-earmark-bar-graph-fill"
+                      aria-hidden="true"
+                    />
+                    <span>Official Reports</span>
+                    <i
+                      className="bi bi-chevron-down drawer-chevron"
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <div
+                    className="desktop-report-links"
+                    aria-label="Official report pages"
+                  >
+                    {admin &&
+                      reportLink("/reports/general", "General Official Report")}
+                    {admin &&
+                      reportLink(
+                        "/reports/results",
+                        "All Events Results Report",
+                      )}
+                    {admin &&
+                      reportLink("/reports/pending", "Pending Events Report")}
+                    {reportLink(
+                      "/reports/qualifiers",
+                      "Regional Qualifier Report",
+                    )}
+                    {reportLink("/reports/players", "Player Medal Report")}
+                    {reportLink(
+                      "/reports/player-events",
+                      "Player Event Report",
+                    )}
+                  </div>
                 </div>
-                <div className="desktop-report-links" aria-label="Official report pages">
-                  {admin && reportLink("/reports/general", "General Official Report")}
-                  {admin && reportLink("/reports/results", "All Events Results Report")}
-                  {admin && reportLink("/reports/pending", "Pending Events Report")}
-                  {reportLink("/reports/qualifiers", "Regional Qualifier Report")}
-                  {reportLink("/reports/players", "Player Medal Report")}
-                  {reportLink("/reports/player-events", "Player Event Report")}
-                </div>
-              </div>}
+              )}
               {profile ? (
-                <button type="button" className="desktop-drawer-link desktop-signout"
-                  onClick={() => void signOut()}>
+                <button
+                  type="button"
+                  className="desktop-drawer-link desktop-signout"
+                  onClick={() => void signOut()}
+                >
                   <i className="bi bi-box-arrow-right" aria-hidden="true" />
                   <span>Sign out</span>
-                  <i className="bi bi-chevron-right drawer-chevron" aria-hidden="true" />
+                  <i
+                    className="bi bi-chevron-right drawer-chevron"
+                    aria-hidden="true"
+                  />
                 </button>
-              ) : drawerLink("/login", "Sign in", "bi-box-arrow-in-right")}
+              ) : (
+                drawerLink("/login", "Sign in", "bi-box-arrow-in-right")
+              )}
             </nav>
           </aside>
         </div>
@@ -391,34 +537,89 @@ export default function App() {
       <footer className="site-footer">
         © 2026 Anthony Riel C. Diango CpE, LPT
       </footer>
-      <nav className="mobile-bottom-nav" aria-label="Mobile navigation" ref={mobileNavRef}>
-        {staff && <div className="mobile-report-panel" id="mobileReportPanel"
-          aria-label="Official reports" hidden={!reportOpen}>
-          <div className="mobile-report-heading">Official Reports</div>
-          {admin && reportLink("/reports/general", "General Official Report")}
-          {admin && reportLink("/reports/results", "All Events Results Report")}
-          {admin && reportLink("/reports/pending", "Pending Events Report")}
-          {reportLink("/reports/qualifiers", "Regional Qualifier Report")}
-          {reportLink("/reports/players", "Player Medal Report")}
-          {reportLink("/reports/player-events", "Player Event Report")}
-        </div>}
+      <nav
+        className="mobile-bottom-nav"
+        aria-label="Mobile navigation"
+        ref={mobileNavRef}
+      >
+        {staff && (
+          <div
+            className="mobile-report-panel"
+            id="mobileReportPanel"
+            aria-label="Official reports"
+            hidden={!reportOpen}
+          >
+            <div className="mobile-report-heading">Official Reports</div>
+            {admin && reportLink("/reports/general", "General Official Report")}
+            {admin &&
+              reportLink("/reports/results", "All Events Results Report")}
+            {admin && reportLink("/reports/pending", "Pending Events Report")}
+            {reportLink("/reports/qualifiers", "Regional Qualifier Report")}
+            {reportLink("/reports/players", "Player Medal Report")}
+            {reportLink("/reports/player-events", "Player Event Report")}
+          </div>
+        )}
         <div className="mobile-nav-container">
           {mobileLink("/", "Home", "bi-house-door-fill")}
           {mobileLink("/rankings", "Rankings", "bi-trophy-fill")}
-          {mobileLink("/events", "Events", "bi-calendar-event-fill", path === "/events" || path.startsWith("/scoring") || path.startsWith("/delegation"))}
-          {mobileLink("/teams", "Teams", "bi-people-fill", path.startsWith("/teams"))}
-          {admin && mobileLink("/manage/coordinators", "Coordinators", "bi-person-badge-fill")}
-          {admin && mobileLink("/manage", "Manage", "bi-sliders", path === "/manage" || path === "/manage/assignments")}
-          {staff && <button type="button"
-            className={path.startsWith("/reports") ? "mobile-nav-item active" : "mobile-nav-item"}
-            aria-expanded={reportOpen} aria-controls="mobileReportPanel"
-            onClick={() => setReportOpen((open) => !open)}>
-            <i className="bi bi-file-earmark-bar-graph-fill" aria-hidden="true" /><span>Report</span>
-          </button>}
-          {profile ? <button type="button" className="mobile-nav-item"
-            onClick={() => void signOut()}>
-            <i className="bi bi-box-arrow-right" aria-hidden="true" /><span>Logout</span>
-          </button> : mobileLink("/login", "Login", "bi-box-arrow-in-right")}
+          {mobileLink(
+            "/events",
+            "Events",
+            "bi-calendar-event-fill",
+            path === "/events" ||
+              path.startsWith("/scoring") ||
+              path.startsWith("/delegation"),
+          )}
+          {mobileLink(
+            "/teams",
+            "Teams",
+            "bi-people-fill",
+            path.startsWith("/teams"),
+          )}
+          {admin &&
+            mobileLink(
+              "/manage/coordinators",
+              "Coordinators",
+              "bi-person-badge-fill",
+            )}
+          {admin &&
+            mobileLink(
+              "/manage",
+              "Manage",
+              "bi-sliders",
+              path === "/manage" || path === "/manage/assignments",
+            )}
+          {staff && (
+            <button
+              type="button"
+              className={
+                path.startsWith("/reports")
+                  ? "mobile-nav-item active"
+                  : "mobile-nav-item"
+              }
+              aria-expanded={reportOpen}
+              aria-controls="mobileReportPanel"
+              onClick={() => setReportOpen((open) => !open)}
+            >
+              <i
+                className="bi bi-file-earmark-bar-graph-fill"
+                aria-hidden="true"
+              />
+              <span>Report</span>
+            </button>
+          )}
+          {profile ? (
+            <button
+              type="button"
+              className="mobile-nav-item"
+              onClick={() => void signOut()}
+            >
+              <i className="bi bi-box-arrow-right" aria-hidden="true" />
+              <span>Logout</span>
+            </button>
+          ) : (
+            mobileLink("/login", "Login", "bi-box-arrow-in-right")
+          )}
         </div>
       </nav>
     </>
