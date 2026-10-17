@@ -105,9 +105,9 @@
 }
 
 @media (max-width: 1000px) and (orientation: portrait) {
-  body { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
+  body { padding-bottom: calc(82px + env(safe-area-inset-bottom)); }
   .mobile-bottom-nav {
-    bottom: calc(14px + env(safe-area-inset-bottom));
+    bottom: calc(6px + env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%);
     width: calc(100% - 32px);
