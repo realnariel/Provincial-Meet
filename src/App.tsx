@@ -302,7 +302,9 @@ export default function App() {
             }}
           >
             <span className="brand-logos">
-              <img src="/images/deped_logo.png" alt="DepEd" />
+              <img src="/images/deped_logo.png" alt="DepEd" className="brand-logo-deped" />
+              <img src="/images/r7_logo.png" alt="DepEd Region VII" />
+              <img src="/images/bohol_logo.png" alt="Province of Bohol" />
               <img src="/images/sdobohol_logo.png" alt="SDO Bohol" />
             </span>
             <span>

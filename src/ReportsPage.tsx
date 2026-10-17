@@ -502,7 +502,9 @@ export function ReportsPage({
         {report === "general" && (
           <aside className="report-poster">
             <div className="report-logos">
-              <img src="/images/deped_logo.png" alt="DepEd" />
+              <img src="/images/deped_logo.png" alt="DepEd" className="report-logo-deped" />
+              <img src="/images/r7_logo.png" alt="DepEd Region VII" />
+              <img src="/images/bohol_logo.png" alt="Province of Bohol" />
               <img src="/images/sdobohol_logo.png" alt="SDO Bohol" />
             </div>
             <p className="report-motto">
@@ -530,7 +532,7 @@ export function ReportsPage({
         )}
         <div className="report-main">
           <div className="report-letterhead">
-            <img src="/images/deped_logo.png" alt="DepEd" />
+            <img src="/images/deped_logo.png" alt="DepEd" className="report-logo-deped" />
             <div>
               Republic of the Philippines
               <br />

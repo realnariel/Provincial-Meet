@@ -680,12 +680,20 @@ textarea:focus-visible {
 }
 .brand-logos {
   display: flex;
-  gap: 0.25rem;
+  align-items: center;
+  gap: 0.35rem;
 }
 .brand-logos img {
   width: 43px;
   height: 43px;
   object-fit: contain;
+  flex-shrink: 0;
+}
+.brand-logos img.brand-logo-deped,
+.brand-logos img[src*="deped_logo"] {
+  width: auto;
+  height: 43px;
+  max-height: 43px;
 }
 .brand small {
   display: block;
@@ -1468,6 +1476,12 @@ textarea:focus-visible {
   height: 50px;
   object-fit: contain;
 }
+.report-letterhead img.report-logo-deped,
+.report-letterhead img[src*="deped_logo"] {
+  width: auto;
+  height: 50px;
+  max-height: 50px;
+}
 .report-paper > h2,
 .report-paper > h3 {
   text-align: center;
@@ -1603,9 +1617,18 @@ textarea:focus-visible {
     width: calc(100% - 24px);
     min-height: 68px;
   }
+  .brand-logos {
+    gap: 0.25rem;
+  }
   .brand-logos img {
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
+  }
+  .brand-logos img.brand-logo-deped,
+  .brand-logos img[src*="deped_logo"] {
+    width: auto;
+    height: 30px;
+    max-height: 30px;
   }
   .brand strong {
     font-size: 0.76rem;
@@ -1685,9 +1708,18 @@ textarea:focus-visible {
   }
 }
 @media (max-width: 420px) {
+  .brand-logos {
+    gap: 0.18rem;
+  }
   .brand-logos img {
-    width: 27px;
-    height: 27px;
+    width: 24px;
+    height: 24px;
+  }
+  .brand-logos img.brand-logo-deped,
+  .brand-logos img[src*="deped_logo"] {
+    width: auto;
+    height: 24px;
+    max-height: 24px;
   }
   .brand {
     gap: 0.4rem;
@@ -1701,6 +1733,11 @@ textarea:focus-visible {
   .report-letterhead img {
     width: 36px;
     height: 36px;
+  }
+  .report-letterhead img[src*="deped_logo"] {
+    width: auto;
+    height: 36px;
+    max-height: 36px;
   }
   .report-letterhead {
     gap: 0.35rem;

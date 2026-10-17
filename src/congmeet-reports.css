@@ -77,8 +77,9 @@
 .cong-report-signatures span { margin-top: 3px; font-size: .75rem; }
 .cong-general-sheet { display: grid; grid-template-columns: 28% 72%; width: min(100%, 1120px); margin: 0 auto; border: 1px solid #c8a354; background: #fff; color: #000; box-shadow: 0 10px 30px rgba(0,0,0,.1); font-family: Arial,Helvetica,sans-serif; }
 .cong-report-poster { display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 24px 16px; background: #0c412f; color: #f5e3a1; text-align: center; }
-.cong-report-poster .cong-poster-logos { display: grid; grid-template-columns: repeat(4,1fr); align-items: center; gap: 6px; width: 100%; }
-.cong-report-poster .cong-poster-logos img { width: 100%; height: 45px; object-fit: contain; }
+.cong-report-poster .cong-poster-logos { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
+.cong-report-poster .cong-poster-logos img { height: 45px; width: 45px; object-fit: contain; flex-shrink: 0; }
+.cong-report-poster .cong-poster-logos img[src*="deped_logo"] { width: auto; max-width: 86px; }
 .cong-report-poster>img { width: 90%; max-height: 170px; }
 .cong-report-poster p,.cong-report-poster em,.cong-report-poster small,.cong-report-poster span { margin: 8px 0; }
 .cong-report-poster h2 { font-size: 1rem; }
