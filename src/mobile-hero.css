@@ -54,8 +54,16 @@
     --poster-green: #073d28;
     --poster-gold: #c8a354;
     --poster-cream: #fff4c2;
-    min-height: 0;
-    padding: 1.25rem 0.9rem 3.4rem;
+    /* One-screen hero: fills the space between the sticky header and the
+       floating bottom nav (header ~71px + top margin 24px + nav zone ~73px) */
+    min-height: calc(100vh - 10.5rem);
+    min-height: calc(100dvh - 10.5rem);
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 0.9rem 0.7rem;
     border-radius: 16px;
     border: 1px solid #c8a35466;
     /* Same soft field as tablet/desktop poster */
@@ -102,11 +110,11 @@
   }
 
   .meet-poster::after {
-    bottom: -4%;
+    bottom: -0.8rem;
     left: -10%;
     width: 120%;
-    height: 28%;
-    border-top: 6px solid var(--poster-gold);
+    height: 5.2rem;
+    border-top: 4px solid var(--poster-gold);
     border-radius: 50% 50% 0 0;
     background: linear-gradient(130deg, #092d20, #24633d, #073d28);
     transform: rotate(-3deg);
@@ -128,13 +136,23 @@
     filter: drop-shadow(0 6px 10px #123f2d33);
   }
 
+  /* Hero artwork flexes: grows into spare height, shrinks on short screens */
+  .meet-poster > .meet-art {
+    flex: 1 1 0;
+    min-height: 4.5rem;
+    max-height: 250px;
+    height: 0;
+    object-fit: contain;
+    margin: 0 auto 0.2rem;
+  }
+
   /* Reset classic-theme title bar on mobile */
   .meet-poster .poster-title {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
-    gap: 0.35rem !important;
-    margin: 0.2rem auto 0.4rem !important;
+    gap: 0.15rem !important;
+    margin: 0 auto 0.2rem !important;
     padding: 0 !important;
     width: 100% !important;
     background: transparent !important;
@@ -145,32 +163,48 @@
     color: #063d2a !important;
   }
 
-  /* BOHOL — solid dark green, gold edge */
+  /* BOHOL — heavy, slanted, deep green gradient with a rich gold outline and edge */
   .meet-poster .poster-bohol {
     display: block !important;
     width: 100% !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: 0.1em 0 0.18em !important;
     border: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-    font-family: "Barlow Condensed", Impact, "Arial Black", sans-serif !important;
+    font-family: Montserrat, "Arial Black", Impact, sans-serif !important;
     font-weight: 900 !important;
-    font-size: clamp(2.5rem, 15vw, 3.8rem) !important;
-    line-height: 0.95 !important;
-    letter-spacing: 0.04em !important;
+    font-size: clamp(2.3rem, 12.5vw, 3.3rem) !important;
+    line-height: 1 !important;
+    letter-spacing: 0.03em !important;
     text-transform: uppercase !important;
     text-align: center !important;
-    color: #063d2a !important;
-    background: none !important;
-    background-clip: border-box !important;
-    -webkit-background-clip: border-box !important;
-    -webkit-text-fill-color: #063d2a !important;
-    filter: none !important;
-    text-shadow:
-      0 1px 0 #c8a354,
-      0 2px 0 #a8842e,
-      0 3px 6px #123f2d33 !important;
+    color: transparent !important;
+    background: linear-gradient(
+      180deg,
+      #397447 0%,
+      #1d6038 24%,
+      #0a4d2f 46%,
+      #064429 50%,
+      #0a4a2e 72%,
+      #123f2d 100%
+    ) !important;
+    background-clip: text !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    -webkit-text-stroke: 0 !important;
+    transform: skewX(-8deg) !important;
+    text-shadow: none !important;
+    /* gold outline, then a darker gold edge, then a soft shadow */
+    filter:
+      drop-shadow(0.03em 0 0 #e5b740)
+      drop-shadow(-0.03em 0 0 #e5b740)
+      drop-shadow(0 0.03em 0 #e5b740)
+      drop-shadow(0 -0.03em 0 #f5e3a1)
+      drop-shadow(0 0.05em 0 #bd8b22)
+      drop-shadow(0 0.09em 0 #93610d)
+      drop-shadow(0 0 0.14em #f5e3a199)
+      drop-shadow(0 0.14em 0.16em #0a3d2a66) !important;
   }
   .meet-poster .poster-bohol::after {
     content: none !important;
@@ -181,11 +215,12 @@
     display: block !important;
     width: min(96%, 22rem) !important;
     margin: 0.1rem auto !important;
-    padding: 0.4rem 0.85rem !important;
+    padding: 0.28rem 0.6rem !important;
     font-family: "Barlow Condensed", Impact, sans-serif !important;
     font-weight: 800 !important;
-    font-size: clamp(0.95rem, 4.8vw, 1.3rem) !important;
-    letter-spacing: 0.08em !important;
+    font-size: clamp(0.85rem, 6.2vw, 1.75rem) !important;
+    letter-spacing: 0.06em !important;
+    white-space: nowrap !important;
     text-transform: uppercase !important;
     text-align: center !important;
     color: #fff4c2 !important;
@@ -203,62 +238,101 @@
     content: none !important;
   }
 
-  /* 2026 — solid gold */
+  /* 2026 — heavy, slanted, metallic gold gradient with a dark green outline and edge */
   .meet-poster .poster-year {
     display: block !important;
     margin: 0.1rem 0 0 !important;
-    padding: 0 !important;
+    padding: 0.05em 0 0.15em !important;
     border: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-    font-family: "Barlow Condensed", Impact, sans-serif !important;
+    font-family: Montserrat, "Arial Black", Impact, sans-serif !important;
     font-weight: 900 !important;
-    font-size: clamp(2.6rem, 16vw, 4rem) !important;
+    font-size: clamp(1.7rem, 9.5vw, 2.4rem) !important;
     line-height: 1 !important;
-    letter-spacing: 0.1em !important;
+    letter-spacing: 0.06em !important;
     text-align: center !important;
-    color: #b88918 !important;
-    background: none !important;
-    background-clip: border-box !important;
-    -webkit-background-clip: border-box !important;
-    -webkit-text-fill-color: #c8a354 !important;
-    filter: none !important;
-    text-shadow:
-      0 1px 0 #fff4c2,
-      0 2px 0 #063d2a,
-      0 3px 8px #123f2d40 !important;
+    color: transparent !important;
+    background: linear-gradient(
+      180deg,
+      #fff9c7 0%,
+      #f5e3a1 24%,
+      #e5b740 47%,
+      #bd8b22 50%,
+      #e5b740 74%,
+      #f5dfa0 100%
+    ) !important;
+    background-clip: text !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    -webkit-text-stroke: 0 !important;
+    transform: skewX(-8deg) !important;
+    text-shadow: none !important;
+    filter:
+      drop-shadow(0.028em 0 0 #397447)
+      drop-shadow(-0.028em 0 0 #397447)
+      drop-shadow(0 0.028em 0 #397447)
+      drop-shadow(0 -0.028em 0 #397447)
+      drop-shadow(0 0.05em 0 #1d6038)
+      drop-shadow(0 0.08em 0 #064429)
+      drop-shadow(0 0 0.12em #f5e3a199)
+      drop-shadow(0 0.16em 0.2em #0a3d2a55) !important;
   }
 
+  /* Teams as coloured boxes */
   .meet-poster .poster-districts {
-    width: fit-content;
-    max-width: 95%;
-    margin: 0.55rem auto 0.25rem;
-    padding: 0.2rem 0.6rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.32rem;
+    width: 100%;
+    max-width: 100%;
+    margin: 0.3rem auto 0.1rem;
+    padding: 0 !important;
     background: transparent !important;
-    color: #063d2a !important;
     border: 0 !important;
+    letter-spacing: 0;
+  }
+  .meet-poster .poster-districts-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.32rem;
+  }
+  .meet-poster .poster-team {
+    display: inline-block;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+    border: 1px solid #00000026;
     font-size: clamp(0.62rem, 2.8vw, 0.78rem);
     font-weight: 800;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.07em;
+    line-height: 1.15;
     text-transform: uppercase;
+    white-space: nowrap;
+    color: #fff;
+    text-shadow: 0 1px 1px #0005;
+    box-shadow:
+      0 2px 0 #0003,
+      inset 0 1px 0 #ffffff59;
   }
 
   .meet-poster .poster-theme {
-    margin: 0.35rem auto 0.55rem;
-    font: 400 clamp(1rem, 4.5vw, 1.25rem) / 1.35 "Kaushan Script", cursive;
+    margin: 0.15rem auto 0.2rem;
+    font: 400 clamp(0.95rem, 4.2vw, 1.15rem) / 1.25 "Kaushan Script", cursive;
     color: #063d2a !important;
   }
 
   .meet-poster .poster-theme::after {
     width: 42%;
     height: 3px;
-    margin-top: 0.4rem;
+    margin-top: 0.2rem;
   }
 
   .meet-poster .poster-details {
     flex-direction: column;
-    gap: 0.65rem;
-    margin: 0.4rem 0 0.5rem;
+    gap: 0.5rem;
+    margin: 0.2rem 0 0.3rem;
     font-size: clamp(0.85rem, 3.5vw, 1rem);
     font-weight: 800;
     color: #063d2a !important;
@@ -268,7 +342,7 @@
     min-width: 0;
     width: fit-content;
     margin: 0 auto;
-    padding: 0.55rem 1.25rem;
+    padding: 0.4rem 1.15rem;
     border: 2px solid #c8a354;
     border-radius: 999px;
     background: linear-gradient(125deg, #0f5a3c, #002719);
@@ -291,8 +365,9 @@
     position: relative;
     z-index: 2;
     font-size: 1.15rem;
-    /* push icons down onto the green band */
-    transform: translateY(2.25rem);
+    /* sit right under the countdown, on the thin green band */
+    margin-top: 0.9rem;
+    transform: none;
   }
 
   .meet-poster .poster-sports {
@@ -303,15 +378,15 @@
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 2.35rem !important;
-    height: 2.35rem !important;
+    width: 2.1rem !important;
+    height: 2.1rem !important;
     line-height: 1 !important;
     padding: 0 !important;
     border: 2px solid #f5e3a1 !important;
     border-radius: 50% !important;
     background: transparent !important;
     box-shadow: 0 2px 8px #0005 !important;
-    font-size: 1.05rem !important;
+    font-size: 0.95rem !important;
     text-align: center !important;
     filter: drop-shadow(0 1px 1px #0006);
   }
@@ -346,16 +421,19 @@
     width: calc(100% - 24px);
   }
   .meet-poster {
-    padding: 1rem 0.7rem 3.2rem;
+    padding: 1rem 0.7rem 0.7rem;
   }
   .meet-art {
     max-height: 160px;
   }
+  .meet-poster > .meet-art {
+    max-height: 250px;
+  }
   .meet-poster .poster-bohol {
-    font-size: clamp(2.2rem, 13vw, 3.1rem) !important;
+    font-size: clamp(2.1rem, 12vw, 3rem) !important;
   }
   .meet-poster .poster-year {
-    font-size: clamp(2.3rem, 14vw, 3.3rem) !important;
+    font-size: clamp(1.6rem, 9vw, 2.2rem) !important;
   }
   .teams-grid {
     grid-template-columns: 1fr;
@@ -492,7 +570,10 @@
   }
 
   .meet-poster .poster-meta {
-    gap: 0.35rem !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 0.1rem 0.8rem !important;
   }
 
   .meet-poster .poster-date,
@@ -515,6 +596,43 @@
 }
 
 @media (min-width: 761px) {
+  .poster-districts {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5cqi;
+    width: fit-content;
+    max-width: 95%;
+    margin: 2.2cqi auto 0;
+    padding: 0;
+    background: none;
+    border: 0;
+    letter-spacing: 0;
+  }
+  .poster-districts-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.6cqi;
+  }
+  .poster-team {
+    display: inline-block;
+    padding: 0.5cqi 1.2cqi;
+    border-radius: 0.8cqi;
+    border: 1px solid #00000026;
+    font-size: 1.6cqi;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    line-height: 1.15;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: #fff;
+    text-shadow: 0 1px 1px #0005;
+    box-shadow:
+      0 2px 0 #0003,
+      inset 0 1px 0 #ffffff59;
+  }
+
   .poster-details {
     gap: 0.65rem !important;
     margin: 1.2% 0;
@@ -534,3 +652,198 @@
     font-size: 1.75cqi;
   }
 }
+
+
+/* Team colours — uniform dark green gradient */
+
+.poster-team--cd1 {
+  background: linear-gradient(160deg, #176B46, #083D2B);
+}
+
+.poster-team--cd2 {
+  background: linear-gradient(160deg, #176B46, #083D2B);
+}
+
+.poster-team--cd3 {
+  background: linear-gradient(160deg, #176B46, #083D2B);
+}
+
+.poster-team--bitic {
+  background: linear-gradient(160deg, #176B46, #083D2B);
+}
+
+.poster-team--talibon {
+  background: linear-gradient(160deg, #176B46, #083D2B);
+}
+
+.poster-team--tagbilaran {
+  background: linear-gradient(160deg, #176B46, #083D2B);
+}
+
+
+/* ==========================================
+   MOBILE HERO — REFINED POSTER LAYOUT
+   ========================================== */
+
+@media (max-width: 760px) {
+
+  /* Allow a little more breathing room */
+  .meet-poster {
+    justify-content: flex-start;
+    height: auto;
+    min-height: calc(100dvh - 10.5rem);
+    padding: 1.1rem 0.8rem 0.85rem;
+  }
+
+  /* Slightly larger athletic artwork */
+  .meet-poster > .meet-art {
+    flex: 0 0 auto;
+    width: 98%;
+    max-width: 440px;
+    height: clamp(105px, 32vw, 155px);
+    min-height: 0;
+    max-height: none;
+    object-fit: contain;
+    margin: 0.2rem auto 0.4rem;
+  }
+
+  /* Title spacing */
+  .meet-poster .poster-title {
+    gap: 0.2rem !important;
+    margin-bottom: 0.55rem !important;
+  }
+
+  /* Teams: comfortable spacing */
+  .meet-poster .poster-districts {
+    gap: 0.4rem;
+    margin: 0.35rem auto 0.75rem;
+  }
+
+  .meet-poster .poster-districts-row {
+    gap: 0.4rem;
+  }
+
+  /* Theme: separate visually from teams */
+  .meet-poster .poster-theme {
+    margin: 0.25rem auto 0.75rem;
+    line-height: 1.5;
+    text-align: center;
+  }
+
+  .meet-poster .poster-theme::after {
+    margin-top: 0.35rem;
+  }
+
+  /* Event details section */
+  .meet-poster .poster-details {
+    display: flex;
+    flex-direction: column !important;
+    align-items: center;
+    gap: 0.85rem !important;
+    width: 100%;
+    margin: 0.2rem auto 0.8rem;
+  }
+
+  /* Date and venue on separate lines */
+  .meet-poster .poster-meta {
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem !important;
+    width: 100%;
+  }
+
+  .meet-poster .poster-date,
+  .meet-poster .poster-venue {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    text-align: center;
+    line-height: 1.35;
+  }
+
+  /* Countdown spacing */
+  .meet-poster .poster-countdown {
+    margin: 0.15rem auto 0;
+  }
+
+  /* Sports icons at the poster bottom */
+  .meet-poster .poster-sports {
+    margin-top: auto;
+    padding-top: 1.2rem;
+    padding-bottom: 0.1rem;
+  }
+}
+
+
+/* MOBILE POSTER — ARTWORK & SPACING REFINEMENT */
+
+@media (max-width: 760px) {
+
+  /* Reduce artwork to a balanced size */
+  .meet-poster > .meet-art {
+    flex: 0 0 auto;
+    width: 88%;
+    max-width: 370px;
+    height: clamp(90px, 26vw, 125px);
+    min-height: 0;
+    max-height: none;
+    object-fit: contain;
+    margin: 0.3rem auto 0.5rem;
+  }
+
+  /* Teams */
+  .meet-poster .poster-districts {
+    gap: 0.35rem;
+    margin: 0.4rem auto 0.65rem;
+  }
+
+  /* Theme — more space before date */
+  .meet-poster .poster-theme {
+    margin: 0.3rem auto 1rem;
+    line-height: 1.45;
+    text-align: center;
+  }
+
+  /* Details container */
+  .meet-poster .poster-details {
+    display: flex;
+    flex-direction: column !important;
+    align-items: center;
+    gap: 0.6rem !important;
+    margin: 0.15rem auto 0.8rem;
+  }
+
+  /* Date and venue on separate lines */
+  .meet-poster .poster-meta {
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 0.4rem !important;
+    width: 100%;
+  }
+
+  .meet-poster .poster-date,
+  .meet-poster .poster-venue {
+    justify-content: center;
+    line-height: 1;
+  }
+
+  /* Countdown */
+  .meet-poster .poster-countdown {
+    margin: 0.25rem auto 0;
+  }
+
+  /* Keep sports icons comfortably positioned */
+  .meet-poster .poster-sports {
+    margin-top: auto;
+    padding-top: 0.5rem;
+    padding-bottom: 0.2rem;
+  }
+}
+
+

@@ -29,8 +29,8 @@
 }
 
 .brand-logos img[src*="candijay_logo"]:not([src*="district"]) {
-  width: 49.5px;
-  height: 49.5px;
+  width: 48px;
+  height: 48px;
   margin-inline: 0px;
 }
 /* District — same size as Region VII / Bohol / SDO */
@@ -79,12 +79,12 @@
     max-height: 26px;
   }
   .brand-logos img[src*="candijay_logo"]:not([src*="district"]) {
-    width: 29px;
-    height: 29px;
+    width: 28px;
+    height: 28px;
   }
   .brand-logos img[src*="candijay_district_logo"] {
-    width: 26px;
-    height: 26px;
+    width: 26.5px;
+    height: 26.5px;
   }
   .brand-title strong {
     font-size: 0.68rem;

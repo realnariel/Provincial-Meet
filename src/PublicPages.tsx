@@ -239,7 +239,20 @@ function MeetPoster() {
         <span className="poster-event">Provincial Athletic Meet</span>
         <span className="poster-year">2026</span>
       </h1>
-      <p className="poster-districts">ELEMENTARY · SECONDARY · PARAGAMES</p>
+      <p className="poster-districts" aria-label="Participating teams">
+        <span className="poster-districts-row">
+          <span className="poster-team poster-team--cd1">CD1</span>
+          <span className="poster-team poster-team--cd2">CD2</span>
+          <span className="poster-team poster-team--cd3">CD3</span>
+          <span className="poster-team poster-team--bitic">BIT-IC</span>
+        </span>
+        <span className="poster-districts-row">
+          <span className="poster-team poster-team--talibon">BACS Talibon</span>
+          <span className="poster-team poster-team--tagbilaran">
+            BACS Tagbilaran
+          </span>
+        </span>
+      </p>
       <p className="poster-theme">“Strong Together. Greater Tomorrow”</p>
       <div className="poster-details">
         <div className="poster-meta">
