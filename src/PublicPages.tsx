@@ -541,7 +541,7 @@ export function RankingsPage({
         />
         <header className="tally-hero">
           <MeetArt />
-          <p className="tally-district">Province of Bohol</p>
+          <p className="tally-district">BOHOL PROVINCIAL</p>
           <h1 className="tally-event">
             ATHLETIC MEET <span>2026</span>
           </h1>
