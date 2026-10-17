@@ -253,7 +253,7 @@ function MeetPoster() {
           </span>
         </span>
       </p>
-      <p className="poster-theme">“Strong Together. Greater Tomorrow”</p>
+      <p className="poster-theme">“Stronger Together: Igniting Camaraderie, Compassion, and Unity through Sports”</p>
       <div className="poster-details">
         <div className="poster-meta">
           <span className="poster-date">

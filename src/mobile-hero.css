@@ -319,7 +319,7 @@
 
   .meet-poster .poster-theme {
     margin: 0.15rem auto 0.2rem;
-    font: 400 clamp(0.95rem, 4.2vw, 1.15rem) / 1.25 "Kaushan Script", cursive;
+    font: 400 clamp(0.95rem, 4.2vw, 0.85rem) / 1.25 "Kaushan Script", cursive;
     color: #063d2a !important;
   }
 
@@ -578,7 +578,7 @@
 
   .meet-poster .poster-date,
   .meet-poster .poster-venue {
-    font-size: clamp(0.88rem, 3.6vw, 1.05rem);
+    font-size: clamp(0.88rem, 3.6vw, 0.3rem);
     color: #063d2a !important;
     -webkit-text-fill-color: #063d2a;
   }
@@ -823,7 +823,7 @@
     flex-direction: column !important;
     flex-wrap: nowrap !important;
     align-items: center !important;
-    gap: 0.4rem !important;
+    gap: 0.3rem !important;
     width: 100%;
   }
 

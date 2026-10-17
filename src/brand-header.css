@@ -83,8 +83,9 @@
     height: 28px;
   }
   .brand-logos img[src*="candijay_district_logo"] {
-    width: 26.5px;
-    height: 26.5px;
+    width: auto;
+    height: 26px;
+    max-height: 26px;
   }
   .brand-title strong {
     font-size: 0.68rem;
