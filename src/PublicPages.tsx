@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { AppData } from "./App";
+import { awardTeamNames, eventAwards } from "./awards";
 import { MEET_DATE, MEET_OPENING_AT, MEET_VENUE } from "./meet-config";
 import {
   compareMedals,
@@ -236,8 +237,10 @@ function MeetPoster() {
       <MeetArt />
       <h1 className="poster-title">
         <span className="poster-bohol">Bohol</span>
-        <span className="poster-event">Provincial Athletic Meet</span>
-        <span className="poster-year">2026</span>
+        <span className="poster-banner">
+          <span className="poster-event">Provincial Athletic Meet</span>{" "}
+          <span className="poster-year">2026</span>
+        </span>
       </h1>
       <p className="poster-districts" aria-label="Participating teams">
         <span className="poster-districts-row">
@@ -494,9 +497,9 @@ export function HomePage({ data, navigate }: { data: AppData; navigate: Nav }) {
                   {event.sport_category || "Open"}
                 </small>
                 <div className="feed-medals">
-                  🥇 {teamName(data, event.goldteamid)}　🥈{" "}
-                  {teamName(data, event.silverteamid)}　🥉{" "}
-                  {teamName(data, event.bronzeteamid)}
+                  🥇 {awardTeamNames(data, event, "Gold", true)}　🥈{" "}
+                  {awardTeamNames(data, event, "Silver", true)}　🥉{" "}
+                  {awardTeamNames(data, event, "Bronze", true)}
                 </div>
               </article>
             ))}
@@ -611,9 +614,9 @@ export function RankingsPage({
                   {event.sport_name || "Sport"} · {event.division}
                 </small>
                 <div className="feed-medals">
-                  🥇 {teamName(data, event.goldteamid)}　🥈{" "}
-                  {teamName(data, event.silverteamid)}　🥉{" "}
-                  {teamName(data, event.bronzeteamid)}
+                  🥇 {awardTeamNames(data, event, "Gold", true)}　🥈{" "}
+                  {awardTeamNames(data, event, "Silver", true)}　🥉{" "}
+                  {awardTeamNames(data, event, "Bronze", true)}
                 </div>
               </article>
             ))}
@@ -946,16 +949,7 @@ function EventCard({
   navigate: Nav;
   canEdit: boolean;
 }) {
-  const resultLines =
-    event.status === "Completed"
-      ? [
-          ["🥇", event.goldteamid, event.gold_winner_name],
-          ["🥈", event.silverteamid, event.silver_winner_name],
-          ["🥉", event.bronzeteamid, event.bronze_winner_name],
-        ].filter(([, teamId, names]) =>
-          Boolean(teamId || winnerNames(names as string | null).length),
-        )
-      : [];
+  const resultLines = event.status === "Completed" ? eventAwards(data, event) : [];
   return (
     <article className="event-card">
       <div className="event-card-summary">
@@ -987,10 +981,10 @@ function EventCard({
         </div>
         <div className="event-record-winners">
           {resultLines.length ? (
-            resultLines.map(([medal, teamId, names]) => (
-              <span key={medal as string}>
-                {medal as string} {teamName(data, teamId as number | null)}{" "}
-                {winnerNames(names as string | null).join(", ")}
+            resultLines.map((award) => (
+              <span key={award.id}>
+                {award.medal === "Gold" ? "🥇" : award.medal === "Silver" ? "🥈" : "🥉"} {teamName(data, award.team_id)}{" "}
+                {winnerNames(award.winner_names).join(", ")}
               </span>
             ))
           ) : (
@@ -1078,9 +1072,7 @@ export function TeamsPage({
   const completed = data.events.filter(
     (event) =>
       event.status === "Completed" &&
-      [event.goldteamid, event.silverteamid, event.bronzeteamid].includes(
-        team.id,
-      ) &&
+      eventAwards(data, event).some((award) => award.team_id === team.id) &&
       (division === "Overall"
         ? event.division !== "Paragames"
         : event.division === division),
@@ -1118,11 +1110,9 @@ export function TeamsPage({
                 <h3>{event.title}</h3>
               </div>
               <strong className="team-medal">
-                {event.goldteamid === team.id
-                  ? "🥇 Gold"
-                  : event.silverteamid === team.id
-                    ? "🥈 Silver"
-                    : "🥉 Bronze"}
+                {eventAwards(data, event).filter((award) => award.team_id === team.id)
+                  .map((award) => `${award.medal === "Gold" ? "🥇" : award.medal === "Silver" ? "🥈" : "🥉"} ${award.medal}`)
+                  .join(", ")}
               </strong>
             </article>
           ))}

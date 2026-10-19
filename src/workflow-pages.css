@@ -119,6 +119,43 @@
 .medal-panel select { min-height: 58px; padding: 0 16px; }
 .medal-panel textarea { min-height: 112px; margin-top: 16px; padding: 16px; resize: vertical; }
 .medal-panel small { display: block; color: #666e69; line-height: 1.45; }
+.winner-name-suggestions {
+  max-height: 224px;
+  margin: 4px 0 8px;
+  overflow-y: auto;
+  border: 1px solid #b8c7be;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 12px 26px rgba(14, 58, 40, .16);
+}
+.winner-name-suggestions button {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #e8eeea;
+  border-radius: 0;
+  padding: 10px 14px;
+  background: #fff;
+  color: #173e30;
+  font: inherit;
+  text-align: left;
+  box-shadow: none;
+}
+.winner-name-suggestions button:last-child { border-bottom: 0; }
+.winner-name-suggestions button:hover,
+.winner-name-suggestions button.active { background: #eaf3ec; color: #0d4b36; }
+.award-entry + .award-entry { margin-top: 20px; padding-top: 20px; border-top: 1px solid #d7dcda; }
+.award-entry-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.award-entry-heading strong { color: #214b3a; font-size: .88rem; }
+.award-add,
+.award-remove { border: 0; background: transparent; color: #0d4b36; box-shadow: none; font: inherit; font-weight: 800; }
+.award-add { margin-top: 14px; padding: 7px 0; text-align: left; }
+.award-remove { padding: 6px; color: #a22e2e; }
+.award-add:hover,
+.award-remove:hover { text-decoration: underline; }
+.award-add:focus-visible,
+.award-remove:focus-visible { outline: 3px solid #d6a943; outline-offset: 2px; }
+.award-rule-note { margin: -24px 0 28px; color: #4b6255; font-size: .94rem; }
 
 .scoring-actions {
   justify-content: space-between;
@@ -189,6 +226,10 @@
   font: inherit;
 }
 .participant-form-grid button { min-height: 48px; border-radius: 7px; text-transform: none; }
+.delegation-location-field { display: grid; gap: 4px; }
+.delegation-location-field > span { color: #4d6156; font-size: .78rem; font-weight: 900; }
+.district-field { display: grid; gap: 6px; }
+.delegation-not-applicable { display: block; text-align: center; color: #718078; }
 
 .recorded-winners {
   margin: 0 0 26px;
@@ -218,7 +259,7 @@
 .participant-tools button { min-height: 38px; border-radius: 6px; padding: 7px 18px; }
 
 .delegation-table-wrap { overflow-x: auto; }
-.delegation-table { width: 100%; border-collapse: collapse; }
+.delegation-table { width: 100%; min-width: 1040px; border-collapse: collapse; }
 .delegation-table th { padding: 16px 14px; background: #0d4b36; color: #fff; text-align: left; text-transform: uppercase; font-size: .82rem; }
 .delegation-table th:first-child { border-radius: 10px 0 0 0; }
 .delegation-table th:last-child { border-radius: 0 10px 0 0; }

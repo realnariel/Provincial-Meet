@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AppData } from "./App";
+import { awardTeamNames, eventAwards } from "./awards";
 import { loadQualifiers } from "./data";
 import { MEET_DATE } from "./meet-config";
 import {
@@ -186,9 +187,7 @@ export function ReportsPage({
       .filter(
         (event) =>
           selectedTeam === "All Teams" ||
-          [event.goldteamid, event.silverteamid, event.bronzeteamid].some(
-            (id) => team(data, id) === selectedTeam,
-          ),
+          eventAwards(data, event).some((award) => team(data, award.team_id) === selectedTeam),
       )
       .map((event) => [
         event.sport_name ?? "",
@@ -197,9 +196,9 @@ export function ReportsPage({
         event.event_category ?? "",
         event.division,
         event.status,
-        team(data, event.goldteamid, true),
-        team(data, event.silverteamid, true),
-        team(data, event.bronzeteamid, true),
+        awardTeamNames(data, event, "Gold", true),
+        awardTeamNames(data, event, "Silver", true),
+        awardTeamNames(data, event, "Bronze", true),
       ]);
   } else if (report === "pending") {
     headers = ["Sport", "Event", "Category", "Type", "Division"];
@@ -249,22 +248,16 @@ export function ReportsPage({
     });
   } else if (report === "players" || report === "player-events") {
     const entries = filtered.flatMap((event) =>
-      (
-        [
-          ["Gold", event.goldteamid, event.gold_winner_name],
-          ["Silver", event.silverteamid, event.silver_winner_name],
-          ["Bronze", event.bronzeteamid, event.bronze_winner_name],
-        ] as const
-      ).flatMap(([medal, teamId, names]) =>
-        (teamId === null ? [] : winnerNames(names))
+      eventAwards(data, event).flatMap((award) =>
+        winnerNames(award.winner_names)
           .filter((name) =>
-            (selectedTeam === "All Teams" || team(data, teamId) === selectedTeam) &&
+            (selectedTeam === "All Teams" || team(data, award.team_id) === selectedTeam) &&
             (exactPlayer
               ? name.toLowerCase() === search.trim().toLowerCase()
               : `${name} ${event.title} ${event.sport_name ?? ""}`
                 .toLowerCase().includes(search.trim().toLowerCase())))
-          .map((name) => ({ name, event, medal, teamId,
-            teamName: team(data, teamId),
+          .map((name) => ({ name, event, medal: award.medal, teamId: award.team_id,
+            teamName: team(data, award.team_id),
             category: event.sport_category || "Unspecified" })),
       ),
     );

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { loadPublicData } from "./data";
 import { isConfigured, supabase } from "./supabase";
-import type { Coordinator, MedalRow, MeetEvent, Team } from "./types";
+import type { Coordinator, EventAward, MedalRow, MeetEvent, Team } from "./types";
 import { HomePage, RankingsPage, EventsPage, TeamsPage } from "./PublicPages";
 import { LoginPage, ManagePage } from "./StaffPages";
 import { CongMeetReportsPage } from "./CongMeetReportsPage";
@@ -11,10 +11,11 @@ import { DelegationPage, OfficialScoringPage } from "./WorkflowPages";
 export interface AppData {
   teams: Team[];
   events: MeetEvent[];
+  awards: EventAward[];
   tallies: MedalRow[];
 }
 
-const emptyData: AppData = { teams: [], events: [], tallies: [] };
+const emptyData: AppData = { teams: [], events: [], awards: [], tallies: [] };
 
 function currentPath() {
   return window.location.pathname.replace(/\/$/, "") || "/";

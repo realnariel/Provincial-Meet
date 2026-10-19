@@ -1,6 +1,7 @@
 -- Run once in the NEW provincial Supabase project's SQL Editor.
 -- This only replaces the result RPCs and their permissions. It does not alter
 -- existing events, results, teams, coordinators, or qualifiers.
+-- Legacy single-award upgrade: do NOT run after upgrade-multiple-awards.sql.
 begin;
 
 do $$

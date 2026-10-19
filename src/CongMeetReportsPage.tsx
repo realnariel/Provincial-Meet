@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { AppData } from "./App";
+import { eventAwards } from "./awards";
 import {
   bulkDeleteQualifiers,
   loadQualifiers,
@@ -890,15 +891,13 @@ function StandardReport({
     .filter((event) =>
       report === "pending"
         ? event.status !== "Completed"
-        : Boolean(event.goldteamid || event.silverteamid || event.bronzeteamid),
+        : eventAwards(data, event).length > 0,
     )
     .filter(
       (event) =>
         report === "pending" ||
         !filters.teams.length ||
-        [event.goldteamid, event.silverteamid, event.bronzeteamid].some((id) =>
-          filters.teams.includes(String(id)),
-        ),
+        eventAwards(data, event).some((award) => filters.teams.includes(String(award.team_id))),
     )
     .sort(eventSort);
   const filterPanel = (
@@ -1063,22 +1062,20 @@ function StandardReport({
 
 function MedalCell({
   data,
-  teamId,
-  names,
+  event,
+  medal,
 }: {
   data: AppData;
-  teamId: number | null;
-  names: string | null;
+  event: MeetEvent;
+  medal: "Gold" | "Silver" | "Bronze";
 }) {
-  const players = reportWinnerNames(names);
+  const awards = eventAwards(data, event, medal);
   return (
     <td className="cong-medal-cell">
-      <strong>{team(data, teamId)}</strong>
-      {players.length ? (
-        players.map((name) => <span key={name}>{name}</span>)
-      ) : (
-        <span>N/A</span>
-      )}
+      {awards.length ? awards.map((award) => <div key={award.id} className="cong-medal-award">
+        <strong>{team(data, award.team_id, true)}</strong>
+        {reportWinnerNames(award.winner_names).map((name) => <span key={name}>{name}</span>)}
+      </div>) : <span>N/A</span>}
     </td>
   );
 }
@@ -1124,21 +1121,9 @@ function ResultsTable({
               <td>
                 <strong>{event.title}</strong>
               </td>
-              <MedalCell
-                data={data}
-                teamId={event.goldteamid}
-                names={event.gold_winner_name}
-              />
-              <MedalCell
-                data={data}
-                teamId={event.silverteamid}
-                names={event.silver_winner_name}
-              />
-              <MedalCell
-                data={data}
-                teamId={event.bronzeteamid}
-                names={event.bronze_winner_name}
-              />
+              <MedalCell data={data} event={event} medal="Gold" />
+              <MedalCell data={data} event={event} medal="Silver" />
+              <MedalCell data={data} event={event} medal="Bronze" />
             </tr>,
           ),
         );
@@ -1286,6 +1271,10 @@ function QualifierReport({ data, navigate }: { data: AppData; navigate: Nav }) {
   const eventById = useMemo(
     () => new Map(data.events.map((event) => [event.id, event])),
     [data.events],
+  );
+  const teamAcronyms = useMemo(
+    () => new Map(data.teams.map((team) => [team.name, team.acronym] as const)),
+    [data.teams],
   );
   const rows = qualifiers
     .filter((item) => {
@@ -1436,6 +1425,7 @@ function QualifierReport({ data, navigate }: { data: AppData; navigate: Nav }) {
     <>
       <PreviewToolbar
         onBack={() => setPreview(false)}
+        landscape
         onExcel={() =>
           exportRenderedReport(
             mode === "qualifier"
@@ -1452,7 +1442,7 @@ function QualifierReport({ data, navigate }: { data: AppData; navigate: Nav }) {
           )
         }
       />
-      <div className="cong-report-sheet">
+      <div className="cong-report-sheet cong-qualifier-sheet">
         <ReportHeader
           title={
             mode === "qualifier"
@@ -1468,7 +1458,7 @@ function QualifierReport({ data, navigate }: { data: AppData; navigate: Nav }) {
             : "PARTICIPANT LIST"}{" "}
           - {selectedText}
         </h3>
-        <QualifierTable rows={rows} eventById={eventById} mode={mode} />
+        <QualifierTable rows={rows} eventById={eventById} teamAcronyms={teamAcronyms} mode={mode} />
         <QualifierSummary rows={unique} />
         <h3 className="cong-cert-title">CERTIFICATION</h3>
         <p className="cong-cert-text">
@@ -1486,10 +1476,12 @@ function QualifierReport({ data, navigate }: { data: AppData; navigate: Nav }) {
 function QualifierTable({
   rows,
   eventById,
+  teamAcronyms,
   mode,
 }: {
   rows: Qualifier[];
   eventById: Map<number, MeetEvent>;
+  teamAcronyms: Map<string, string>;
   mode: "qualifier" | "participant";
 }) {
   const seen = new Set<string>();
@@ -1507,7 +1499,7 @@ function QualifierTable({
     if (!divRows.length) return;
     body.push(
       <tr className="division-row" key={`${division}-division`}>
-        <td colSpan={mode === "qualifier" ? 6 : 5}>
+        <td colSpan={mode === "qualifier" ? 7 : 6}>
           {division.toUpperCase()} DIVISION
         </td>
         <td>{new Set(divRows.map(personKey)).size}</td>
@@ -1525,7 +1517,7 @@ function QualifierTable({
       );
       body.push(
         <tr className="sport-total" key={`${division}-${sport}`}>
-          <td colSpan={mode === "qualifier" ? 6 : 5}>{sport}</td>
+          <td colSpan={mode === "qualifier" ? 7 : 6}>{sport}</td>
           <td>{new Set(sportRows.map(personKey)).size}</td>
         </tr>,
       );
@@ -1536,14 +1528,13 @@ function QualifierTable({
             categoryOf(eventById.get(item.event_id)) === category,
         );
         if (!athletes.length) return;
-        const eventTracker = { last: "" };
         body.push(
           <tr
             className={`participant-group ${category.toLowerCase()}`}
             key={`${division}-${sport}-${category}-athletes`}
           >
             <td></td>
-            <td colSpan={mode === "qualifier" ? 5 : 4}>
+            <td colSpan={mode === "qualifier" ? 6 : 5}>
               <strong>{category}</strong>
             </td>
             <td>{new Set(athletes.map(personKey)).size}</td>
@@ -1559,7 +1550,7 @@ function QualifierTable({
               seen={seen}
               shirtSeen={shirtSeen}
               bestSizes={bestSizes}
-              eventTracker={eventTracker}
+              teamAcronyms={teamAcronyms}
             />,
           ),
         );
@@ -1577,7 +1568,7 @@ function QualifierTable({
             className="participant-group staff-heading"
             key={`${division}-${sport}-staff`}
           >
-            <td colSpan={mode === "qualifier" ? 6 : 5}>
+            <td colSpan={mode === "qualifier" ? 7 : 6}>
               <strong>Coaches and support staff</strong>
             </td>
             <td>{new Set(staff.map(personKey)).size}</td>
@@ -1588,14 +1579,13 @@ function QualifierTable({
             (item) => categoryOf(eventById.get(item.event_id)) === category,
           );
           if (!categoryStaff.length) return;
-          const eventTracker = { last: "" };
           body.push(
             <tr
               className={`participant-group staff-category ${category.toLowerCase()}`}
               key={`${division}-${sport}-${category}-staff-category`}
             >
               <td></td>
-              <td colSpan={mode === "qualifier" ? 5 : 4}>
+              <td colSpan={mode === "qualifier" ? 6 : 5}>
                 <strong>{category}</strong>
               </td>
               <td>{new Set(categoryStaff.map(personKey)).size}</td>
@@ -1611,7 +1601,7 @@ function QualifierTable({
                 seen={seen}
                 shirtSeen={shirtSeen}
                 bestSizes={bestSizes}
-                eventTracker={eventTracker}
+                teamAcronyms={teamAcronyms}
               />,
             ),
           );
@@ -1622,14 +1612,25 @@ function QualifierTable({
   return (
     <table
       id="qualifier-report-table"
-      className="cong-official-table qualifier-table"
+      className={`cong-official-table qualifier-table qualifier-table--${mode}`}
     >
+      <colgroup>
+        <col className="qualifier-col-sports" />
+        {mode === "qualifier" && <col className="qualifier-col-event" />}
+        <col className="qualifier-col-name" />
+        <col className="qualifier-col-team" />
+        <col className="qualifier-col-district" />
+        <col className="qualifier-col-role" />
+        <col className="qualifier-col-shirt" />
+        <col className="qualifier-col-total" />
+      </colgroup>
       <thead>
         <tr>
           <th>Sports</th>
           {mode === "qualifier" && <th>Event Title</th>}
           <th>Participant Name</th>
           <th>Team</th>
+          <th>District</th>
           <th>Role</th>
           <th>T-Shirt Sizes</th>
           <th>Total</th>
@@ -1640,7 +1641,7 @@ function QualifierTable({
           body
         ) : (
           <tr>
-            <td colSpan={mode === "qualifier" ? 7 : 6}>
+            <td colSpan={mode === "qualifier" ? 8 : 7}>
               No qualifier records available for the current filters.
             </td>
           </tr>
@@ -1657,7 +1658,7 @@ function QualifierRow({
   seen,
   shirtSeen,
   bestSizes,
-  eventTracker,
+  teamAcronyms,
 }: {
   item: Qualifier;
   event: MeetEvent;
@@ -1665,7 +1666,7 @@ function QualifierRow({
   seen: Set<string>;
   shirtSeen: Set<string>;
   bestSizes: Map<string, string>;
-  eventTracker: { last: string };
+  teamAcronyms: Map<string, string>;
 }) {
   const participantCategory =
     roleOrder(item.role) === 0 ? categoryOf(event) : "Staff";
@@ -1674,16 +1675,17 @@ function QualifierRow({
   const person = personKey(item);
   const shirt = shirtSeen.has(person) ? "-" : bestSizes.get(person) || "N/A";
   shirtSeen.add(person);
-  const displayEvent = event.title === eventTracker.last ? "" : event.title;
-  eventTracker.last = event.title;
   return (
     <tr>
       <td></td>
-      {mode === "qualifier" && <td>{displayEvent}</td>}
-      <td>
+      {mode === "qualifier" && <td>{event.title}</td>}
+      <td className="qualifier-person-name">
         <strong>{properCase(item.participant_name)}</strong>
       </td>
-      <td>{item.team || "N/A"}</td>
+      <td className="qualifier-person-team" title={item.team || undefined}>
+        {teamAcronyms.get(item.team ?? "") || item.team || "N/A"}
+      </td>
+      <td>{item.specific_district?.trim() || "—"}</td>
       <td>{item.role ? properCase(item.role) : "N/A"}</td>
       <td>{shirt}</td>
       <td></td>
@@ -2252,20 +2254,12 @@ function PlayerReport({
   const all = useMemo(
     () =>
       data.events.flatMap((event) =>
-        (
-          [
-            ["Gold", event.goldteamid, event.gold_winner_name],
-            ["Silver", event.silverteamid, event.silver_winner_name],
-            ["Bronze", event.bronzeteamid, event.bronze_winner_name],
-          ] as const
-        ).flatMap(([medal, id, names]) =>
-          id === null
-            ? []
-            : winnerNames(names).map((name) => ({
+        eventAwards(data, event).flatMap((award) =>
+          winnerNames(award.winner_names).map((name) => ({
                 event,
-                medal,
+                medal: award.medal,
                 player: name,
-                teamName: team(data, id),
+                teamName: team(data, award.team_id),
                 category:
                   event.sport_category &&
                   SPORTS_CATEGORIES.includes(event.sport_category)

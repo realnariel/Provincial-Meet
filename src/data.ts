@@ -1,6 +1,7 @@
 import { requireSupabase } from "./supabase";
 import type {
   Coordinator,
+  EventAward,
   MedalRow,
   MeetEvent,
   Qualifier,
@@ -31,12 +32,13 @@ async function readAll<T>(
 }
 
 export async function loadPublicData() {
-  const [teams, events, tallies] = await Promise.all([
+  const [teams, events, awards, tallies] = await Promise.all([
     readAll<Team>("prov_teams"),
     readAll<MeetEvent>("prov_events"),
+    readAll<EventAward>("prov_event_awards"),
     readAll<MedalRow>("prov_medal_tallies", "*", "teamid"),
   ]);
-  return { teams, events, tallies };
+  return { teams, events, awards, tallies };
 }
 
 export async function loadCoordinators(): Promise<Coordinator[]> {
@@ -80,35 +82,12 @@ export async function removeEvent(id: number) {
 
 export async function saveResult(
   event: MeetEvent,
-  result: Pick<
-    MeetEvent,
-    | "goldteamid"
-    | "silverteamid"
-    | "bronzeteamid"
-    | "gold_winner_name"
-    | "silver_winner_name"
-    | "bronze_winner_name"
-    | "status"
-  >,
+  awards: Pick<EventAward, "medal" | "team_id" | "winner_names">[],
   _username: string,
 ) {
-  const ids = [
-    result.goldteamid,
-    result.silverteamid,
-    result.bronzeteamid,
-  ].filter((id): id is number => id !== null);
-  if (new Set(ids).size !== ids.length)
-    throw new Error(
-      "A team cannot receive more than one medal in the same event.",
-    );
-  const { error } = await requireSupabase().rpc("prov_publish_result", {
+  const { error } = await requireSupabase().rpc("prov_publish_awards", {
     p_event_id: event.id,
-    p_gold_team_id: result.goldteamid,
-    p_silver_team_id: result.silverteamid,
-    p_bronze_team_id: result.bronzeteamid,
-    p_gold_winner_name: result.gold_winner_name,
-    p_silver_winner_name: result.silver_winner_name,
-    p_bronze_winner_name: result.bronze_winner_name,
+    p_awards: awards,
   });
   if (error) throw error;
 }

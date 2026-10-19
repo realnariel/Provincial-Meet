@@ -1,6 +1,8 @@
 -- Run in the NEW Supabase project only. Never run this in the shared MVC database.
--- Retains the MVC prov_* names and existing columns. The two auth columns on
--- prov_coordinators are the only additions required by browser-based Auth.
+-- Retains the MVC prov_* names and existing columns. The auth-link columns on
+-- prov_coordinators support browser-based Auth.
+-- After this baseline, run upgrade-multiple-awards.sql before deploying the
+-- current React app; the upgrade is also safe for an existing provincial DB.
 begin;
 
 create schema if not exists private;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { AppData } from "./App";
 import {
   bulkDeleteQualifiers,
@@ -8,7 +8,9 @@ import {
   saveQualifiers,
   saveResult,
 } from "./data";
-import { winnerNames, type Coordinator, type MeetEvent, type Qualifier } from "./types";
+import { MEDALS, eventAwards } from "./awards";
+import { districtsForTeam } from "./districts";
+import { winnerNames, type Coordinator, type Medal, type MeetEvent, type Qualifier } from "./types";
 
 type Nav = (path: string) => void;
 
@@ -39,6 +41,124 @@ function accessAllowed(event: MeetEvent | undefined, profile: Coordinator) {
   return Boolean(event && (profile.is_admin || event.coordinatorid === profile.id));
 }
 
+function winnerNameOptions(data: AppData) {
+  const names = new Map<string, string>();
+  for (const award of data.awards) {
+    for (const name of winnerNames(award.winner_names)) {
+      const key = name.toLocaleLowerCase();
+      if (!names.has(key)) names.set(key, name);
+    }
+  }
+  return [...names.values()].sort((a, b) => a.localeCompare(b));
+}
+
+type AwardDraft = { key: number; medal: Medal; team_id: number | null; winner_names: string };
+
+function initialAwardDrafts(data: AppData, event: MeetEvent | undefined): AwardDraft[] {
+  return MEDALS.flatMap((medal): AwardDraft[] => {
+    const existing = event ? eventAwards(data, event, medal) : [];
+    return existing.length
+      ? existing.map((award, index) => ({ key: MEDALS.indexOf(medal) * 1000 + index, medal, team_id: award.team_id, winner_names: award.winner_names ?? "" }))
+      : [{ key: MEDALS.indexOf(medal) * 1000, medal, team_id: null, winner_names: "" }];
+  });
+}
+
+function currentWinnerLine(value: string, caret: number) {
+  const start = value.lastIndexOf("\n", Math.max(0, caret - 1)) + 1;
+  const next = value.indexOf("\n", caret);
+  return { start: caret === 0 ? 0 : start, end: next < 0 ? value.length : next };
+}
+
+function WinnerNameField({
+  id,
+  label,
+  value,
+  names,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  names: string[];
+  onChange: (value: string) => void;
+}) {
+  const input = useRef<HTMLTextAreaElement>(null);
+  const [caret, setCaret] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(-1);
+  const listId = `${id}-suggestions`;
+  const line = currentWinnerLine(value, caret);
+  const query = value.slice(line.start, caret).trim().toLocaleLowerCase();
+  const otherNames = new Set(winnerNames(`${value.slice(0, line.start)}\n${value.slice(line.end)}`).map((name) => name.toLocaleLowerCase()));
+  const matches = open && query.length >= 2
+    ? names.filter((name) => name.toLocaleLowerCase().includes(query) && !otherNames.has(name.toLocaleLowerCase())).slice(0, 8)
+    : [];
+
+  function choose(name: string) {
+    const position = input.current?.selectionStart ?? caret;
+    const currentLine = currentWinnerLine(value, position);
+    onChange(value.slice(0, currentLine.start) + name + value.slice(currentLine.end));
+    setCaret(currentLine.start + name.length);
+    setOpen(false);
+    setActive(-1);
+    requestAnimationFrame(() => {
+      input.current?.focus();
+      input.current?.setSelectionRange(currentLine.start + name.length, currentLine.start + name.length);
+    });
+  }
+
+  return (
+    <div className="winner-name-field" onBlur={(event) => {
+      if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+    }}>
+      <label htmlFor={id} className="sr-only">{label} athlete names</label>
+      <textarea id={id} ref={input} rows={5} value={value}
+        placeholder="Athlete Name(s)\nPress Enter for next line"
+        aria-autocomplete="list" aria-controls={listId}
+        aria-activedescendant={active >= 0 && matches[active] ? `${listId}-${active}` : undefined}
+        onChange={(event) => {
+          onChange(event.target.value);
+          setCaret(event.target.selectionStart);
+          setActive(-1);
+          setOpen(true);
+        }}
+        onClick={(event) => {
+          setCaret(event.currentTarget.selectionStart);
+          setActive(-1);
+          setOpen(true);
+        }}
+        onKeyUp={(event) => {
+          if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+            setCaret(event.currentTarget.selectionStart);
+            setActive(-1);
+            setOpen(true);
+          }
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Escape" || event.key === "Enter") {
+            setOpen(false);
+            setActive(-1);
+            return;
+          }
+          if (!matches.length) return;
+          if (event.key === "Tab" && active >= 0) {
+            event.preventDefault();
+            choose(matches[active]);
+          } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            setActive((index) => (index + (event.key === "ArrowDown" ? 1 : -1) + matches.length) % matches.length);
+          }
+        }} />
+      {matches.length > 0 && <div id={listId} className="winner-name-suggestions" role="listbox" aria-label="Recorded winner names">
+        {matches.map((name, index) => <button key={name} id={`${listId}-${index}`} type="button" role="option"
+          aria-selected={active === index} className={active === index ? "active" : ""}
+          onMouseDown={(event) => event.preventDefault()} onClick={() => choose(name)}>{name}</button>)}
+      </div>}
+      <small>Type a name for suggestions. Use Arrow Down and Tab, or click a name. Enter starts a new athlete line.</small>
+    </div>
+  );
+}
+
 function Unavailable({ navigate, message = "You may submit results only for events assigned to you." }: { navigate: Nav; message?: string }) {
   return (
     <section className="panel state-message">
@@ -63,18 +183,16 @@ export function OfficialScoringPage({
   navigate: Nav;
 }) {
   const event = data.events.find((item) => item.id === eventId);
-  const [result, setResult] = useState(() => ({
-    goldteamid: event?.goldteamid ?? null,
-    silverteamid: event?.silverteamid ?? null,
-    bronzeteamid: event?.bronzeteamid ?? null,
-    gold_winner_name: event?.gold_winner_name ?? "",
-    silver_winner_name: event?.silver_winner_name ?? "",
-    bronze_winner_name: event?.bronze_winner_name ?? "",
-    status: "Completed" as const,
-  }));
+  const nextKey = useRef(3000);
+  const [drafts, setDrafts] = useState(() => initialAwardDrafts(data, event));
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const recordedNames = useMemo(() => winnerNameOptions(data), [data.awards]);
+
+  useEffect(() => {
+    setDrafts(initialAwardDrafts(data, data.events.find((item) => item.id === eventId)));
+  }, [eventId]);
 
   if (!accessAllowed(event, profile) || !event) return <Unavailable navigate={navigate} />;
 
@@ -95,16 +213,31 @@ export function OfficialScoringPage({
 
   async function publish(formEvent: FormEvent) {
     formEvent.preventDefault();
+    if (!drafts.some((draft) => draft.team_id !== null)) {
+      setError("Select a team for at least one award before publishing.");
+      return;
+    }
+    if (drafts.some((draft) => draft.team_id === null && draft.winner_names.trim())) {
+      setError("Select a team for every athlete name, or clear that name before publishing.");
+      return;
+    }
+    const filled = drafts.filter((draft) => draft.team_id !== null);
+    const unique = new Set(filled.map((draft) => `${draft.medal}|${draft.team_id}|${draft.winner_names.trim().toLocaleLowerCase()}`));
+    if (unique.size !== filled.length) {
+      setError("The same team and athlete names cannot be entered twice for one medal.");
+      return;
+    }
     await run(
-      () => saveResult(event!, result, profile.username),
+      () => saveResult(event!, filled
+        .map((draft) => ({ medal: draft.medal, team_id: draft.team_id!, winner_names: draft.winner_names.trim() || null })), profile.username),
       "Official results published successfully.",
     );
   }
 
   const medals = [
-    { key: "gold", label: "Gold medalist", icon: "🥇" },
-    { key: "silver", label: "Silver medalist", icon: "🥈" },
-    { key: "bronze", label: "Bronze medalist", icon: "🥉" },
+    { key: "gold", medal: "Gold", label: "Gold medalist", icon: "🥇" },
+    { key: "silver", medal: "Silver", label: "Silver medalist", icon: "🥈" },
+    { key: "bronze", medal: "Bronze", label: "Bronze medalist", icon: "🥉" },
   ] as const;
 
   return (
@@ -133,35 +266,39 @@ export function OfficialScoringPage({
         {error && <div className="alert error" role="alert">{error}</div>}
 
         <div className="medal-grid">
-          {medals.map(({ key, label, icon }) => {
-            const teamKey = `${key}teamid` as "goldteamid" | "silverteamid" | "bronzeteamid";
-            const winnerKey = `${key}_winner_name` as "gold_winner_name" | "silver_winner_name" | "bronze_winner_name";
-            return (
+          {medals.map(({ key, medal, label, icon }) => (
               <section className={`medal-panel ${key}`} key={key}>
                 <h2><span aria-hidden="true">{icon}</span> {label}</h2>
-                <label>
-                  <span className="sr-only">{label} team</span>
-                  <select value={result[teamKey] ?? ""} onChange={(change) => setResult({
-                    ...result,
-                    [teamKey]: change.target.value ? Number(change.target.value) : null,
-                  })}>
-                    <option value="">-- Select team --</option>
-                    {data.teams.map((team) => (
-                      <option key={team.id} value={team.id}>{team.acronym} — {team.name}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span className="sr-only">{label} athlete names</span>
-                  <textarea rows={5} value={result[winnerKey]}
-                    placeholder={key === "bronze" ? "Athlete Name(s)\nPress Enter for next line" : "Athlete Name(s)"}
-                    onChange={(change) => setResult({ ...result, [winnerKey]: change.target.value })} />
-                </label>
-                <small>Enter one athlete per line.</small>
+                {drafts.filter((draft) => draft.medal === medal).map((draft, index) => (
+                  <div className="award-entry" key={draft.key}>
+                    <div className="award-entry-heading">
+                      <strong>{index === 0 ? label : `Additional ${medal} award ${index + 1}`}</strong>
+                      {index > 0 && <button type="button" className="award-remove" aria-label={`Remove ${medal} award ${index + 1}`}
+                        onClick={() => setDrafts((previous) => previous.filter((item) => item.key !== draft.key))}>Remove</button>}
+                    </div>
+                    <label>
+                      <span className="sr-only">{medal} award {index + 1} team</span>
+                      <select value={draft.team_id ?? ""} onChange={(change) => setDrafts((previous) => previous.map((item) => item.key === draft.key
+                        ? { ...item, team_id: change.target.value ? Number(change.target.value) : null } : item))}>
+                        <option value="">-- Select team or leave blank --</option>
+                        {data.teams.map((team) => (
+                          <option key={team.id} value={team.id}>{team.acronym} — {team.name}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <WinnerNameField id={`${key}-winner-names-${draft.key}`} label={`${label} ${index + 1}`} value={draft.winner_names}
+                      names={recordedNames} onChange={(value) => setDrafts((previous) => previous.map((item) => item.key === draft.key
+                        ? { ...item, winner_names: value } : item))} />
+                  </div>
+                ))}
+                <button type="button" className="award-add" disabled={drafts.length >= 100} onClick={() => setDrafts((previous) => [...previous,
+                  { key: nextKey.current++, medal, team_id: null, winner_names: "" }])}>
+                  <i className="bi bi-plus-circle" aria-hidden="true" /> Add another {medal} award
+                </button>
               </section>
-            );
-          })}
+          ))}
         </div>
+        <p className="award-rule-note">Ties can have multiple awards of the same medal. Leave a medal blank if no award is given; Silver and Bronze are not skipped automatically.</p>
 
         <div className="scoring-actions">
           <div>
@@ -170,10 +307,7 @@ export function OfficialScoringPage({
                 if (window.confirm("Clear this result and all delegation participants for this event?"))
                   void run(async () => {
                     await clearResult(event.id);
-                    setResult({
-                      goldteamid: null, silverteamid: null, bronzeteamid: null,
-                      gold_winner_name: "", silver_winner_name: "", bronze_winner_name: "", status: "Completed",
-                    });
+                    setDrafts(initialAwardDrafts({ ...data, awards: [] }, event));
                   }, "The result and delegation were cleared.");
               }}>
               Clear All Data
@@ -206,19 +340,15 @@ function winnerCandidates(data: AppData, current: MeetEvent): WinnerCandidate[] 
   const rows: WinnerCandidate[] = [];
   for (const event of data.events) {
     if (event.status !== "Completed" || event.division !== current.division || event.sport_name !== current.sport_name) continue;
-    const medals = [
-      ["Silver", event.silverteamid, event.silver_winner_name],
-      ["Bronze", event.bronzeteamid, event.bronze_winner_name],
-    ] as const;
-    for (const [medal, teamId, names] of medals) {
-      const team = data.teams.find((item) => item.id === teamId)?.name;
+    for (const award of eventAwards(data, event).filter((item) => item.medal !== "Gold")) {
+      const team = data.teams.find((item) => item.id === award.team_id)?.name;
       if (!team) continue;
-      for (const name of winnerNames(names)) {
+      for (const name of winnerNames(award.winner_names)) {
         rows.push({
           key: `${name.toLowerCase()}|${team.toLowerCase()}`,
           name,
           team,
-          medal,
+          medal: award.medal as "Silver" | "Bronze",
           eventTitle: event.title,
           gender: event.sport_category === "Boys" ? "M" : event.sport_category === "Girls" ? "W" : null,
         });
@@ -238,6 +368,46 @@ const blankParticipant = {
   gender: "",
   tshirt_size: "",
 };
+
+function DistrictField({
+  team,
+  teams,
+  value,
+  onChange,
+  label,
+}: {
+  team: string | null;
+  teams: AppData["teams"];
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+}) {
+  const districts = districtsForTeam(team, teams);
+  const [manualTeam, setManualTeam] = useState<string | null>(null);
+  if (!districts) return (
+    <input aria-label={label} value={value} placeholder="District"
+      onChange={(change) => onChange(change.target.value)} />
+  );
+  const manual = manualTeam === team || Boolean(value && !districts.includes(value));
+  return (
+    <div className="district-field">
+      <select aria-label={label} value={manual ? "__manual__" : value} onChange={(change) => {
+        const selected = change.target.value;
+        setManualTeam(selected === "__manual__" ? team : null);
+        onChange(selected === "__manual__" ? "" : selected);
+      }}>
+        <option value="">Select district</option>
+        {districts.map((district) => <option key={district} value={district}>{district}</option>)}
+        <option value="__manual__">Enter district manually</option>
+      </select>
+      {manual && <input aria-label={`Manual ${label}`} value={value} placeholder="Type district name"
+        onChange={(change) => {
+          setManualTeam(team);
+          onChange(change.target.value);
+        }} />}
+    </div>
+  );
+}
 
 export function DelegationPage({
   data,
@@ -303,7 +473,9 @@ export function DelegationPage({
   }
 
   function updateParticipant(id: string, field: keyof Qualifier, value: string) {
-    setParticipants((rows) => rows.map((row) => row.id === id ? { ...row, [field]: value } : row));
+    setParticipants((rows) => rows.map((row) => row.id === id
+      ? { ...row, [field]: value, ...(field === "team" ? { specific_district: null } : {}) }
+      : row));
   }
 
   const participantFields = (participant: Qualifier) => (
@@ -315,8 +487,12 @@ export function DelegationPage({
         <option value="">Select team</option>
         {data.teams.map((team) => <option key={team.id} value={team.name}>{team.acronym} — {team.name}</option>)}
       </select></label>
-      <label><span>School / District</span><input value={participant.specific_district ?? ""}
-        onChange={(change) => updateParticipant(participant.id, "specific_district", change.target.value)} /></label>
+      <label><span>District</span>
+        <DistrictField team={participant.team} teams={data.teams} value={participant.specific_district ?? ""}
+          onChange={(value) => updateParticipant(participant.id, "specific_district", value)} label={`District for ${participant.participant_name}`} />
+      </label>
+      <label><span>School</span><input value={participant.school ?? ""} placeholder="School name"
+        onChange={(change) => updateParticipant(participant.id, "school", change.target.value)} /></label>
       <label><span>Role</span><select value={participant.role ?? "Athlete"}
         onChange={(change) => updateParticipant(participant.id, "role", change.target.value)}>
         {['Athlete', 'Coach', 'Assistant Coach', 'Chaperon'].map((role) => <option key={role}>{role}</option>)}
@@ -353,12 +529,18 @@ export function DelegationPage({
               {['Athlete', 'Coach', 'Assistant Coach', 'Chaperon'].map((role) => <option key={role}>{role}</option>)}
             </select></label>
             <label><span className="sr-only">Team</span><select required value={form.team}
-              onChange={(change) => setForm({ ...form, team: change.target.value })}>
+              onChange={(change) => setForm({ ...form, team: change.target.value, specific_district: "" })}>
               <option value="">Select Team</option>
               {data.teams.map((team) => <option key={team.id} value={team.name}>{team.acronym} — {team.name}</option>)}
             </select></label>
-            <label><span className="sr-only">School or district</span><input placeholder="School / district (optional)" value={form.specific_district}
-              onChange={(change) => setForm({ ...form, specific_district: change.target.value })} /></label>
+            <label className="delegation-location-field">
+              <span>District</span><DistrictField team={form.team} teams={data.teams} value={form.specific_district}
+                onChange={(value) => setForm({ ...form, specific_district: value })} label="District" />
+            </label>
+            <label className="delegation-location-field"><span>School</span>
+              <input placeholder="School name" value={form.school}
+                onChange={(change) => setForm({ ...form, school: change.target.value })} />
+            </label>
             <label><span className="sr-only">T-shirt size</span><select value={form.tshirt_size}
               onChange={(change) => setForm({ ...form, tshirt_size: change.target.value })}>
               <option value="">T-Shirt Size</option>
@@ -413,13 +595,16 @@ export function DelegationPage({
         {participants.length ? <>
           <div className="delegation-table-wrap">
             <table className="delegation-table">
-              <thead><tr><th>Select</th><th>Participant Name</th><th>Team</th><th>School / District</th><th>Role</th><th>T-Shirt Size</th></tr></thead>
+              <thead><tr><th>Select</th><th>Participant Name</th><th>Team</th><th>District</th><th>School</th><th>Role</th><th>T-Shirt Size</th></tr></thead>
               <tbody>{participants.map((participant) => <tr key={participant.id}>
                 <td><input type="checkbox" aria-label={`Select ${participant.participant_name}`} checked={selectedIds.includes(participant.id)}
                   onChange={(change) => setSelectedIds((previous) => change.target.checked ? [...previous, participant.id] : previous.filter((id) => id !== participant.id))} /></td>
                 <td><input required value={participant.participant_name} onChange={(change) => updateParticipant(participant.id, "participant_name", change.target.value)} /></td>
                 <td><select value={participant.team ?? ""} onChange={(change) => updateParticipant(participant.id, "team", change.target.value)}><option value="">Select team</option>{data.teams.map((team) => <option key={team.id} value={team.name}>{team.acronym}</option>)}</select></td>
-                <td><input value={participant.specific_district ?? ""} onChange={(change) => updateParticipant(participant.id, "specific_district", change.target.value)} /></td>
+                <td><DistrictField team={participant.team} teams={data.teams} value={participant.specific_district ?? ""}
+                  onChange={(value) => updateParticipant(participant.id, "specific_district", value)} label={`District for ${participant.participant_name}`} /></td>
+                <td><input aria-label={`School for ${participant.participant_name}`} placeholder="School name" value={participant.school ?? ""}
+                  onChange={(change) => updateParticipant(participant.id, "school", change.target.value)} /></td>
                 <td><select value={participant.role ?? "Athlete"} onChange={(change) => updateParticipant(participant.id, "role", change.target.value)}>{['Athlete', 'Coach', 'Assistant Coach', 'Chaperon'].map((role) => <option key={role}>{role}</option>)}</select></td>
                 <td><select value={participant.tshirt_size ?? ""} onChange={(change) => updateParticipant(participant.id, "tshirt_size", change.target.value)}><option value="">—</option>{['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'].map((size) => <option key={size}>{size}</option>)}</select></td>
               </tr>)}</tbody>

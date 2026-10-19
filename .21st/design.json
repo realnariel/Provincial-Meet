@@ -36,7 +36,11 @@
     "Match the MVC navigation patterns: use a right-side hamburger drawer on desktop, and retain the icon-and-label floating dock on mobile without a mobile hamburger.",
     "Match the Events page reference with four desktop summary cards and table-style records, plus two mobile summary cards, division pills, collapsible filters, and dark green event cards with gold accents.",
     "Use the CongMeet MVC reports as the source of truth for report configuration, grouping, certification, signatories, print layouts, and Excel exports.",
-    "Keep the desktop right-side menu compact and content-fitted, with a neutral translucent scrim that leaves the current page recognizable behind the drawer."
+    "Keep the desktop right-side menu compact and content-fitted, with a neutral translucent scrim that leaves the current page recognizable behind the drawer.",
+    "Use repeatable award entries inside the existing Gold/Silver/Bronze scoring panels; a blank medal is skipped without disabling later medals.",
+    "In Manage Delegation, keep District and School separate. CD 1, CD 2, and CD 3 use DepEd Bohol district dropdowns with a manual-entry choice; BACS and BIT-IC use typed District and School fields. Keep District blankable without showing the word optional in the form.",
+    "In the Regional Qualifier Report, align all table headings to their data columns, place District directly after Team, and center the summary and signatory blocks in screen and print layouts.",
+    "Keep qualifier participant names and team acronyms on one line, repeat the specific event title on every qualifier row, and print the wider report in landscape."
   ],
   "evidence": [],
   "generatedAt": "2026-10-12T07:03:09.796Z"

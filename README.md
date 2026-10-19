@@ -52,6 +52,15 @@ application. Password changes are performed only by an administrator.
    Run `supabase/upgrade-report-parity.sql` so signed-in coordinators can read
    the consolidated Regional Qualifier and Participant reports. It changes
    read access only; result and delegation writes remain event-scoped.
+   Before deploying the multi-award React form, run
+   `supabase/upgrade-multiple-awards.sql` in this **new provincial project**.
+   It copies any existing provincial medal results into `prov_event_awards`,
+   changes standings to count every award, and atomically saves multiple
+   Gold/Silver/Bronze entries. Do not run this in the congressional database.
+   The new frontend requires this upgrade; without it, results will not load.
+   Run it after the older result-workflow upgrade; do not rerun `schema.sql`
+   or `upgrade-result-workflows.sql` afterward, since those contain the
+   previous single-award functions.
 5. The congressional catalog was exported with a read-only transaction and
    packaged in `supabase/import-congressional-catalog.sql`. Review
    `supabase/catalog-category-audit.md`, then run the import SQL in the
@@ -107,3 +116,25 @@ report behavior still require a new test project before cutover. CSV export can
 be opened in Excel, but the old app's spreadsheet formatting is not yet
 reproduced exactly. The migration checklist in `./REACT_MIGRATION_PLAN.md`
 tracks remaining parity work.
+
+## Multiple awards per medal
+
+Each Gold, Silver, and Bronze section can hold several awards. A blank section
+means no award at that medal level; the next medal remains available. Each
+saved award contributes one medal to its team's division standings. Athlete
+names are optional for team awards. The first award at each medal is mirrored
+into the older `prov_events` result columns for compatibility, but all displays
+and tallies use `prov_event_awards`. Apply the SQL upgrade before redeploying
+the React app, then verify a tied medal in the scoring form and reports.
+
+## Delegation district and school
+
+Manage Delegation saves the district in `prov_qualifiers.specific_district` and
+the school in `prov_qualifiers.school`; no schema change is needed. CD 1, CD 2,
+and CD 3 use team-specific school-district dropdowns with a manual-entry choice, sourced from the
+[DepEd Bohol district roster](https://rms.depedbohol.org/reports) and grouped
+by the [DepEd congressional-district list](https://www.depedbohol.org/?page_id=26167).
+BACS-Tagbilaran, BACS-Talibon, and BIT-IC have a typed District field and a
+separate School Name field. District can be left blank for every team, including the CDs.
+Existing combined School/District entries are not automatically
+split; review them when editing participants.

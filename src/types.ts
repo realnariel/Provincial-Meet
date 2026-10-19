@@ -16,6 +16,7 @@ export interface MeetEvent {
   division: Division
   status: EventStatus
   coordinatorid: number | null
+  // First-award compatibility fields; all scoring, reports, and tallies use prov_event_awards.
   goldteamid: number | null
   silverteamid: number | null
   bronzeteamid: number | null
@@ -25,6 +26,17 @@ export interface MeetEvent {
   createdat: string
   updatedat: string | null
   last_updated_by: string | null
+}
+
+export type Medal = 'Gold' | 'Silver' | 'Bronze'
+
+export interface EventAward {
+  id: number
+  event_id: number
+  medal: Medal
+  team_id: number
+  winner_names: string | null
+  sort_order: number
 }
 
 export interface Coordinator {
