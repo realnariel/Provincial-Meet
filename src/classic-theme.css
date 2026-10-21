@@ -1193,13 +1193,13 @@ h4 {
   font-variant-numeric: tabular-nums;
 }
 .tally-board:fullscreen .medal-table td:nth-child(2) {
-  font-size: clamp(0.95rem, 3.1vh, 2.15rem);
+  font-size: clamp(0.95rem, 3.3vh, 2.15rem);
   text-align: left;
   padding-left: 0.85em;
   color: #0a3d28;
 }
 .tally-board:fullscreen .medal-table td:nth-child(n + 3) {
-  font-size: clamp(1.2rem, 4.2vh, 2.85rem);
+  font-size: clamp(1.5rem, 6.5vh, 4rem);
 }
 .tally-board:fullscreen .medal-table .team-fullname {
   display: none;
