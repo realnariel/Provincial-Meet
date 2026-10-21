@@ -331,9 +331,11 @@ function MedalTable({
               >
                 <td className="rank-cell">
                   {rank <= 3 && awarded(row) ? (
-                    <span className={`rank-badge rank-${rank}`}>{rank}</span>
+                    <span className={`rank-badge-wrap rank-${rank}`}>
+                      <span className={`rank-badge rank-${rank}`}>{rank}</span>
+                    </span>
                   ) : (
-                    rank
+                    <span className="rank-plain">{rank}</span>
                   )}
                 </td>
                 <td>
@@ -637,10 +639,19 @@ export function RankingsPage({
             ATHLETIC MEET <span>2026</span>
           </h1>
           <p className="tally-areas" aria-label="Participating teams">
-            CD1 · CD2 · CD3 · BIT-IC · BACS TALIBON · BACS TAGBILARAN
+            <span>CD 1</span>
+            <span>CD 2</span>
+            <span>CD 3</span>
+            <span>BIT-IC</span>
+            <span>BACS-TAGBILARAN</span>
+            <span>BACS-TALIBON</span>
           </p>
         </header>
-        <h2 className="tally-title">🏅 &nbsp; MEDAL TALLY &nbsp; 🏅</h2>
+        <h2 className="tally-title">
+          <span className="tally-title-medal" aria-hidden="true">🥇</span>
+          <span className="tally-title-text">MEDAL TALLY</span>
+          <span className="tally-title-medal" aria-hidden="true">🥇</span>
+        </h2>
         <p className="tally-fullscreen-division" aria-live="polite">
           {division.toUpperCase()}
         </p>
