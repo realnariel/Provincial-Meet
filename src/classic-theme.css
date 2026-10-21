@@ -610,6 +610,7 @@ h4 {
   align-items: start;
 }
 .tally-board {
+  position: relative;
   min-width: 0;
   padding: 1.25rem;
   border: 1px solid #123f2d1f;
@@ -617,6 +618,39 @@ h4 {
   background:
     repeating-linear-gradient(135deg, transparent 0 85px, #3974470b 85px 110px),
     radial-gradient(ellipse at top, #fff, #edf3e8);
+}
+.tally-board-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.tally-board-controls .division-filters {
+  flex: 1;
+}
+.tally-fullscreen-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+  min-height: 34px;
+  margin: 0.4rem 0 1.1rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid #123f2d42;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--cc-primary);
+  box-shadow: 0 4px 12px #123f2d1a;
+  font-size: 0.7rem;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tally-fullscreen-toggle:hover {
+  background: #edf5ef;
+}
+.tally-fullscreen-division {
+  display: none;
 }
 .tally-hero {
   position: relative;
@@ -820,24 +854,184 @@ h4 {
   white-space: nowrap;
 }
 
+/* Desktop presentation mode follows the official widescreen medal-tally board. */
+.tally-board:fullscreen {
+  box-sizing: border-box;
+  width: 100vw;
+  height: 100vh;
+  padding: clamp(0.65rem, 1.5vh, 1.35rem) clamp(1rem, 2.7vw, 3rem);
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: clamp(92px, 15vh, 150px) auto auto auto minmax(0, 1fr);
+  align-content: stretch;
+  background:
+    linear-gradient(135deg, #063d2a 0 4.5%, transparent 4.6% 95.4%, #063d2a 95.5%),
+    linear-gradient(45deg, #c8a354 0 1.2%, transparent 1.3% 98.7%, #c8a354 98.8%),
+    radial-gradient(circle at 15% 18%, #39744724 0 2px, transparent 2.5px) 0 0/14px 14px,
+    repeating-linear-gradient(135deg, transparent 0 90px, #3974470c 90px 116px),
+    radial-gradient(ellipse at top, #fff, #e8f3e7);
+}
+.tally-board:fullscreen .tally-board-controls {
+  position: absolute;
+  top: 0.8rem;
+  right: 1rem;
+  z-index: 10;
+}
+.tally-board:fullscreen .division-filters {
+  display: none;
+}
+.tally-board:fullscreen .tally-fullscreen-toggle {
+  margin: 0;
+  border-color: #ffffff42;
+  background: #063d2ae8;
+  color: #fff;
+  box-shadow: 0 5px 18px #063d2a38;
+}
+.tally-board:fullscreen .tally-hero {
+  display: grid;
+  grid-template-columns: clamp(190px, 23vw, 360px) minmax(470px, 760px);
+  grid-template-rows: repeat(3, auto);
+  align-content: center;
+  align-items: center;
+  justify-content: center;
+  column-gap: clamp(0.5rem, 1.5vw, 1.5rem);
+  padding: 0;
+  overflow: visible;
+}
+.tally-board:fullscreen .tally-hero .meet-art {
+  grid-column: 1;
+  grid-row: 1 / 4;
+  width: 100%;
+  height: 100%;
+  max-height: clamp(82px, 14vh, 140px);
+  object-fit: contain;
+}
+.tally-board:fullscreen .tally-district {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  font-size: clamp(0.95rem, 1.8vw, 1.8rem);
+}
+.tally-board:fullscreen .tally-event {
+  grid-column: 2;
+  grid-row: 2;
+  font-size: clamp(1.35rem, 2.7vw, 2.9rem);
+  margin: 0.08em 0;
+}
+.tally-board:fullscreen .tally-areas {
+  grid-column: 2;
+  grid-row: 3;
+  align-self: start;
+  font-size: clamp(0.5rem, 0.82vw, 0.85rem);
+  margin: 0.2em 0 0;
+}
+.tally-board:fullscreen .tally-title {
+  width: min(66vw, 1080px);
+  justify-self: center;
+  padding: clamp(0.35rem, 0.8vh, 0.65rem) 1rem;
+  border-width: 2px;
+  border-radius: 8px 8px 22px 22px;
+  font-size: clamp(1.65rem, 3.2vw, 3.4rem);
+  line-height: 1;
+  box-shadow: 0 8px 20px #123f2d33;
+}
+.tally-board:fullscreen .tally-fullscreen-division {
+  display: block;
+  width: min(31vw, 470px);
+  justify-self: center;
+  z-index: 1;
+  margin: -0.18rem 0 0;
+  padding: 0.18em 1.2em;
+  border: 3px solid #c8a354;
+  border-radius: 999px;
+  background: linear-gradient(#fff, #eaf1e8);
+  color: #063d2a;
+  box-shadow: 0 5px 12px #123f2d2b;
+  font-size: clamp(1rem, 1.9vw, 2rem);
+  font-weight: 900;
+  line-height: 1.05;
+  text-align: center;
+}
+.tally-board:fullscreen .tally-asof {
+  margin: clamp(0.15rem, 0.45vh, 0.4rem) 0;
+  font-size: clamp(0.85rem, 1.3vw, 1.35rem);
+}
+.tally-board:fullscreen .table-scroll {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+}
+.tally-board:fullscreen .medal-table {
+  width: 100%;
+  height: 100%;
+  table-layout: fixed;
+  border: 1px solid #ffffffb8;
+  border-radius: clamp(12px, 1.4vw, 24px);
+}
+.tally-board:fullscreen .medal-table thead {
+  height: 12%;
+}
+.tally-board:fullscreen .medal-table tbody {
+  height: 88%;
+}
+.tally-board:fullscreen .medal-table tbody tr {
+  height: 16.666%;
+}
+.tally-board:fullscreen .medal-table th {
+  padding: 0.15em 0.4em;
+  font-size: clamp(0.9rem, 2.8vh, 2rem);
+}
+.tally-board:fullscreen .medal-table th:nth-child(1) {
+  width: 13%;
+}
+.tally-board:fullscreen .medal-table th:nth-child(2) {
+  width: 32%;
+}
+.tally-board:fullscreen .medal-table th:nth-child(n + 3) {
+  width: 13.75%;
+}
+.tally-board:fullscreen .medal-table td {
+  padding: 0.08em 0.45em;
+  font-size: clamp(1.2rem, 4.3vh, 2.9rem);
+  line-height: 1;
+}
+.tally-board:fullscreen .medal-table td:nth-child(2) {
+  font-size: clamp(1.05rem, 3.6vh, 2.55rem);
+}
+.tally-board:fullscreen .medal-table .team-fullname {
+  display: none;
+}
+.tally-board:fullscreen .rank-badge {
+  width: clamp(1.8rem, 6.2vh, 4rem);
+  height: clamp(1.8rem, 6.2vh, 4rem);
+  border-width: clamp(2px, 0.25vw, 4px);
+  font-size: clamp(1rem, 3.3vh, 2.2rem);
+}
+
 /* Teams and inner pages use the same score-card vocabulary. */
 .teams-page .division-filters {
   max-width: 840px;
   margin: 0 auto 1.5rem;
 }
-.teams-grid {
+.teams-page .teams-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
   gap: 1.1rem;
 }
 .teams-grid .school-card {
+  container-type: inline-size;
   border: 1px solid #ffffff2b;
   border-radius: 14px;
   display: flex;
+  flex-direction: row;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
+  justify-content: center;
+  gap: clamp(0.55rem, 4%, 0.9rem);
   text-align: left;
-  min-height: 178px;
-  padding: 1.25rem !important;
+  min-height: 160px;
+  padding: 1.1rem 1.25rem !important;
   width: 100%;
   overflow: hidden;
 }
@@ -845,7 +1039,10 @@ h4 {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.35rem;
+  justify-content: center;
+  flex: 0 1 46%;
+  width: 46%;
+  gap: 0.3rem;
   min-width: 0;
 }
 .team-acronym {
@@ -857,6 +1054,8 @@ h4 {
 }
 .teams-grid .team-card .team-acronym {
   color: #fff;
+  font-size: clamp(1rem, 6cqi, 1.35rem);
+  line-height: 1.2;
 }
 .team-division {
   color: var(--cc-gold-light);
@@ -871,11 +1070,37 @@ h4 {
   font-size: 0.8rem;
 }
 .area-card-logo {
-  width: 100px;
-  height: 100px;
+  width: clamp(62px, 34%, 112px);
+  max-width: 34%;
+  height: auto;
+  aspect-ratio: 1;
   object-fit: contain;
-  flex-shrink: 0;
+  flex: 0 0 auto;
   filter: drop-shadow(0 5px 8px #0005);
+}
+.teams-grid .team-card .team-division,
+.teams-grid .team-card .area-rank {
+  font-size: clamp(0.72rem, 3.5cqi, 0.88rem);
+}
+.teams-grid .team-card .medal-pill {
+  max-width: 100%;
+  gap: clamp(0.35rem, 3cqi, 0.65rem);
+  padding: 0.3rem clamp(0.45rem, 3cqi, 0.65rem);
+  font-size: clamp(0.72rem, 3.5cqi, 0.88rem);
+}
+@media (max-width: 1100px) {
+  .teams-page .teams-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .teams-page .teams-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .teams-page .teams-grid .school-card {
+    min-height: 132px;
+    padding: 1rem 1.15rem !important;
+  }
 }
 .team-detail-hero {
   display: flex;
@@ -1255,6 +1480,9 @@ h4 {
   .home-grid,
   .rankings-layout {
     grid-template-columns: 1fr;
+  }
+  .tally-fullscreen-toggle {
+    display: none;
   }
   .home-banner .meet-poster {
     min-height: 460px;

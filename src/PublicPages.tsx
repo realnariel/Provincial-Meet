@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { AppData } from "./App";
 import { awardTeamNames, eventAwards } from "./awards";
 import { MEET_DATE, MEET_OPENING_AT, MEET_VENUE } from "./meet-config";
@@ -102,16 +102,25 @@ function medalRows(data: AppData, division: DivisionFilter) {
 const filters: DivisionFilter[] = ["Overall", ...DIVISIONS];
 const awarded = (row: { gold: number; silver: number; bronze: number }) =>
   row.gold + row.silver + row.bronze;
+
+function databaseTimestamp(value: string) {
+  const hasTimeZone = /[zZ]|[+-]\d\d:\d\d$/.test(value);
+  return new Date(hasTimeZone ? value : `${value}Z`);
+}
+
 function lastUpdated(events: MeetEvent[]) {
   const latest = [...events]
     .filter((event) => event.status === "Completed" && event.updatedat)
     .sort((a, b) => (b.updatedat ?? "").localeCompare(a.updatedat ?? ""))[0];
   return latest?.updatedat
     ? new Intl.DateTimeFormat("en-PH", {
-        dateStyle: "medium",
-        timeStyle: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
         timeZone: "Asia/Manila",
-      }).format(new Date(latest.updatedat))
+      }).format(databaseTimestamp(latest.updatedat))
     : "Awaiting results";
 }
 function MedalPill({
@@ -528,6 +537,27 @@ export function RankingsPage({
       : "Overall";
   });
   const [autoRotating, setAutoRotating] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const tallyBoardRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const syncFullscreenState = () => {
+      setIsFullscreen(document.fullscreenElement === tallyBoardRef.current);
+    };
+    document.addEventListener("fullscreenchange", syncFullscreenState);
+    return () =>
+      document.removeEventListener("fullscreenchange", syncFullscreenState);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      return;
+    }
+    if (!tallyBoardRef.current) return;
+    setAutoRotating(true);
+    await tallyBoardRef.current.requestFullscreen();
+  };
 
   // Match the original scoreboard: advance every 10 seconds, then refresh
   // results on the return to Overall. A manual choice pauses for 15 seconds.
@@ -569,24 +599,51 @@ export function RankingsPage({
     .slice(0, 8);
   return (
     <div className="rankings-layout">
-      <section className="tally-board">
-        <DivisionTabs
-          value={division}
-          change={(value) => {
-            setDivision(value);
-            setAutoRotating(false);
-            sessionStorage.setItem("prov_rankings_division", value);
-          }}
-        />
+      <section className="tally-board" ref={tallyBoardRef}>
+        <div className="tally-board-controls">
+          <DivisionTabs
+            value={division}
+            change={(value) => {
+              setDivision(value);
+              setAutoRotating(false);
+              sessionStorage.setItem("prov_rankings_division", value);
+            }}
+          />
+          {document.fullscreenEnabled && (
+            <button
+              type="button"
+              className="tally-fullscreen-toggle"
+              onClick={() => void toggleFullscreen()}
+              aria-label={
+                isFullscreen
+                  ? "Exit medal tally fullscreen view"
+                  : "View medal tally in fullscreen"
+              }
+            >
+              <i
+                className={
+                  isFullscreen ? "bi bi-fullscreen-exit" : "bi bi-fullscreen"
+                }
+                aria-hidden="true"
+              />
+              <span>{isFullscreen ? "Exit fullscreen" : "View fullscreen"}</span>
+            </button>
+          )}
+        </div>
         <header className="tally-hero">
           <MeetArt />
           <p className="tally-district">BOHOL PROVINCIAL</p>
           <h1 className="tally-event">
             ATHLETIC MEET <span>2026</span>
           </h1>
-          <p className="tally-areas">ELEMENTARY · SECONDARY · PARAGAMES</p>
+          <p className="tally-areas" aria-label="Participating teams">
+            CD1 · CD2 · CD3 · BIT-IC · BACS TALIBON · BACS TAGBILARAN
+          </p>
         </header>
         <h2 className="tally-title">🏅 &nbsp; MEDAL TALLY &nbsp; 🏅</h2>
+        <p className="tally-fullscreen-division" aria-live="polite">
+          {division.toUpperCase()}
+        </p>
         <p className="tally-asof">◷ &nbsp; As of {lastUpdated(data.events)}</p>
         <MedalTable data={data} division={division} />
       </section>
@@ -606,7 +663,7 @@ export function RankingsPage({
                       ? new Intl.DateTimeFormat("en-PH", {
                           dateStyle: "medium",
                           timeZone: "Asia/Manila",
-                        }).format(new Date(event.updatedat))
+                        }).format(databaseTimestamp(event.updatedat))
                       : ""}
                   </small>
                 </div>
