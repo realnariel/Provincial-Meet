@@ -931,7 +931,7 @@ h4 {
   box-shadow: 0 5px 18px #063d2a38;
 }
 
-/* Header: artwork + titles tight and center-aligned as one unit */
+/* Header: artwork beside title; teams under; division not overlapping */
 .tally-board:fullscreen .tally-hero {
   position: relative;
   z-index: 1;
@@ -939,54 +939,70 @@ h4 {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0;
-  padding: 0.15rem 0 0;
+  gap: 0.2rem;
+  padding: 0.1rem 0 0;
   margin: 0 auto;
   overflow: visible;
   text-align: center;
   width: 100%;
-  max-width: min(92vw, 1100px);
+  max-width: min(94vw, 1100px);
 }
 .tally-board:fullscreen .tally-hero::before,
 .tally-board:fullscreen .tally-hero::after {
   display: none;
 }
+.tally-board:fullscreen .tally-hero-main {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.6rem, 1.8vw, 1.4rem);
+  width: 100%;
+}
 .tally-board:fullscreen .tally-hero .meet-art {
-  width: min(36vw, 340px);
+  width: clamp(90px, 14vw, 160px);
   height: auto;
-  max-height: clamp(58px, 9.5vh, 100px);
-  margin: 0 auto -0.15rem;
+  max-height: clamp(70px, 11vh, 120px);
+  margin: 0;
   object-fit: contain;
+  object-position: center;
   display: block;
+  flex-shrink: 0;
+}
+.tally-board:fullscreen .tally-hero-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  text-align: left;
+  min-width: 0;
 }
 .tally-board:fullscreen .tally-district {
   font-family: "Barlow Condensed", Impact, sans-serif;
-  font-size: clamp(0.95rem, 1.85vw, 1.75rem);
+  font-size: clamp(0.95rem, 1.9vw, 1.7rem);
   font-weight: 800;
   font-style: normal;
   letter-spacing: 0.06em;
   color: #063d28;
   margin: 0;
-  line-height: 1;
-  text-align: center;
+  line-height: 1.05;
 }
 .tally-board:fullscreen .tally-event {
   font-family: "Barlow Condensed", Impact, sans-serif;
   font-style: italic;
   font-weight: 900;
-  font-size: clamp(1.45rem, 3.1vw, 2.85rem);
-  margin: -0.05em 0 0;
-  line-height: 0.95;
+  font-size: clamp(1.4rem, 3vw, 2.7rem);
+  margin: 0;
+  line-height: 1;
   color: #063d28;
-  text-align: center;
 }
-.tally-board:fullscreen .tally-event span {
+.tally-board:fullscreen .tally-year {
   font-style: italic;
-  background: linear-gradient(180deg, #f5e08a 0%, #d4a017 45%, #a67c00 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
+  font-weight: 900;
+  /* Solid gold fill — avoids the horizontal band through digits from multi-stop gradients */
+  color: #c9a020;
+  background: none;
+  -webkit-text-fill-color: #c9a020;
   filter: drop-shadow(0 1px 0 #5c4408);
 }
 .tally-board:fullscreen .tally-areas {
@@ -995,12 +1011,13 @@ h4 {
   justify-content: center;
   align-items: center;
   gap: 0.2rem 0.45rem;
-  margin: 0.2rem 0 0.1rem;
+  margin: 0.15rem 0 0.05rem;
   font-size: clamp(0.5rem, 0.88vw, 0.78rem);
   font-weight: 800;
   letter-spacing: 0.1em;
   color: #1a4d35;
   text-align: center;
+  width: 100%;
 }
 .tally-board:fullscreen .tally-areas span {
   position: relative;
@@ -1014,13 +1031,13 @@ h4 {
   font-size: 0.9em;
 }
 
-/* MEDAL TALLY ribbon */
+/* MEDAL TALLY ribbon — no overlap with division pill */
 .tally-board:fullscreen .tally-title {
   position: relative;
   z-index: 1;
   width: min(68vw, 920px);
   justify-self: center;
-  margin: 0.25rem auto 0;
+  margin: 0.35rem auto 0;
   padding: clamp(0.4rem, 0.9vh, 0.65rem) clamp(2.2rem, 4.5vw, 4rem);
   border: 3px solid #c8a354;
   border-radius: 6px;
@@ -1061,7 +1078,7 @@ h4 {
   filter: drop-shadow(0 2px 2px #0006);
 }
 
-/* Division pill overlapping ribbon bottom */
+/* Division pill — below ribbon with gap, no overlap */
 .tally-board:fullscreen .tally-fullscreen-division {
   display: block;
   position: relative;
@@ -1069,7 +1086,7 @@ h4 {
   width: fit-content;
   min-width: min(26vw, 260px);
   justify-self: center;
-  margin: -0.5rem auto 0;
+  margin: 0.55rem auto 0;
   padding: 0.22em 1.5em;
   border: 3px solid #c8a354;
   border-radius: 999px;
@@ -1125,43 +1142,44 @@ h4 {
   height: 16.666%;
 }
 .tally-board:fullscreen .medal-table th {
-  padding: 0.2em 0.3em;
-  font-size: clamp(0.8rem, 2.35vh, 1.55rem);
+  padding: 0.15em 0.25em;
+  font-size: clamp(0.65rem, 1.8vh, 1.15rem);
   font-weight: 900;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   border: 0;
+  white-space: nowrap;
 }
-/* Narrower TEAM; wider G/S/B/TOTAL for 3-digit tallies */
+/* Narrower TEAM; wider medal cols for GOLD/SILVER/BRONZE + 3-digit counts */
 .tally-board:fullscreen .medal-table th:nth-child(1) {
-  width: 11%;
+  width: 10%;
   background: #0a3d28;
   color: #fff;
 }
 .tally-board:fullscreen .medal-table th:nth-child(2) {
-  width: 22%;
+  width: 20%;
   background: #0a3d28;
   color: #fff;
   text-align: left;
   padding-left: 0.85em;
 }
 .tally-board:fullscreen .medal-table th.medal-header-gold {
-  width: 16.75%;
+  width: 17.5%;
   background: linear-gradient(180deg, #e8c44a 0%, #c9a020 100%);
   color: #1a3d28;
 }
 .tally-board:fullscreen .medal-table th.medal-header-silver {
-  width: 16.75%;
+  width: 17.5%;
   background: linear-gradient(180deg, #d0d8e0 0%, #a8b4c0 100%);
   color: #1a3d28;
 }
 .tally-board:fullscreen .medal-table th.medal-header-bronze {
-  width: 16.75%;
+  width: 17.5%;
   background: linear-gradient(180deg, #d4894a 0%, #a85a28 100%);
   color: #fff;
 }
 .tally-board:fullscreen .medal-table th:nth-child(6) {
-  width: 16.75%;
+  width: 17.5%;
   background: #0a3d28;
   color: #fff;
 }

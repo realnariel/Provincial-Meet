@@ -307,9 +307,9 @@ function MedalTable({
           <tr>
             <th>Rank</th>
             <th>Team</th>
-            <th className="medal-header-gold">🥇 G</th>
-            <th className="medal-header-silver">🥈 S</th>
-            <th className="medal-header-bronze">🥉 B</th>
+            <th className="medal-header-gold">🥇 GOLD</th>
+            <th className="medal-header-silver">🥈 SILVER</th>
+            <th className="medal-header-bronze">🥉 BRONZE</th>
             <th>Total</th>
           </tr>
         </thead>
@@ -633,11 +633,15 @@ export function RankingsPage({
           )}
         </div>
         <header className="tally-hero">
-          <MeetArt />
-          <p className="tally-district">BOHOL PROVINCIAL</p>
-          <h1 className="tally-event">
-            ATHLETIC MEET <span>2026</span>
-          </h1>
+          <div className="tally-hero-main">
+            <MeetArt />
+            <div className="tally-hero-text">
+              <p className="tally-district">BOHOL PROVINCIAL</p>
+              <h1 className="tally-event">
+                ATHLETIC MEET <span className="tally-year">2026</span>
+              </h1>
+            </div>
+          </div>
           <p className="tally-areas" aria-label="Participating teams">
             <span>CD 1</span>
             <span>CD 2</span>
