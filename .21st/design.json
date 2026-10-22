@@ -42,7 +42,8 @@
     "In the Regional Qualifier Report, align all table headings to their data columns, place District directly after Team, and center the summary and signatory blocks in screen and print layouts.",
     "Keep qualifier participant names and team acronyms on one line, repeat the specific event title on every qualifier row, and print the wider report in landscape.",
     "On the Teams page, use horizontal text-and-seal cards that fill the card width without a hollow center: proportionally scale the text, medals, and seal with overflow-safe wrapping; use three columns on desktop, two on tablet, and one compact column on phones.",
-    "On desktop Rankings, offer a compact fullscreen presentation mode styled like the official widescreen medal-tally board; place the meet artwork beside the title to reserve enough vertical space for every team, while keeping division rotation and division-specific results connected to the live Rankings state."
+    "On desktop Rankings, offer a compact fullscreen presentation mode styled like the official widescreen medal-tally board; place the meet artwork beside the title to reserve enough vertical space for every team, while keeping division rotation and division-specific results connected to the live Rankings state.",
+    "Match the Congressional Meet staff administration pattern: Coordinators and Event Management use green-and-gold desktop tables that transform into labeled, full-width cards on phones, with no horizontal scrolling. Keep event creation, editing, filtering, coordinator assignment, account management, and visible success or error feedback in the same responsive flow."
   ],
   "evidence": [],
   "generatedAt": "2026-10-12T07:03:09.796Z"

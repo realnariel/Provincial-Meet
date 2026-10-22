@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { AppData } from "./App";
 import {
   bulkAddQualifiers,
@@ -168,327 +168,163 @@ export function ManagePage({
   navigate: Nav;
 }) {
   const [coordinators, setCoordinators] = useState<Coordinator[]>([]);
-  const [tab, setTab] = useState<"events" | "assignments" | "coordinators">(
-    admin ? section : "events",
-  );
-  const [selected, setSelected] = useState<MeetEvent | null>(null);
-  const [form, setForm] = useState(blankEvent);
-  const [search, setSearch] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
-  const visible = useMemo(
-    () =>
-      data.events.filter(
-        (event) =>
-          (admin || event.coordinatorid === profile.id) &&
-          `${event.title} ${event.sport_name ?? ""}`
-            .toLowerCase()
-            .includes(search.toLowerCase()),
-      ),
-    [data.events, admin, profile.id, search],
-  );
   useEffect(() => {
     if (admin)
       void loadCoordinators()
         .then(setCoordinators)
         .catch((cause) => setError(message(cause)));
   }, [admin]);
-  useEffect(() => { setTab(admin ? section : "events"); }, [admin, section]);
-  function choose(event: MeetEvent) {
-    setSelected(event);
-    setForm({
-      title: event.title,
-      sport_name: event.sport_name ?? "",
-      sport_category: event.sport_category ?? "",
-      event_category: event.event_category ?? "",
-      division: event.division,
-      coordinatorid: event.coordinatorid,
-      status: event.status,
-    });
-    setNotice("");
-    setError("");
-  }
-  async function run(action: () => Promise<void>, success: string) {
-    setSaving(true);
-    setError("");
-    setNotice("");
-    try {
-      await action();
-      await refresh();
-      setNotice(success);
-    } catch (cause) {
-      setError(message(cause));
-    } finally {
-      setSaving(false);
-    }
-  }
-  async function submitEvent(event: FormEvent) {
-    event.preventDefault();
-    await run(
-      () => saveEvent({ ...form, id: selected?.id }),
-      selected ? "Event updated." : "Event created.",
+
+  if (admin && section === "coordinators") {
+    return (
+      <CoordinatorAdmin
+        coordinators={coordinators}
+        loadError={error}
+        reload={async () => setCoordinators(await loadCoordinators())}
+      />
     );
   }
+
   return (
-    <section className="panel">
-      <div className="page-heading">
-        <span className="eyebrow dark">Staff workspace</span>
-        <h1>Meet management</h1>
-        <p>
-          {admin
-            ? "Manage events, assignments, and coordinators."
-            : `Events for ${profile.fullname}.`}
-        </p>
-      </div>
-      {notice && (
-        <div className="alert success" role="status">
-          {notice}
-        </div>
-      )}
-      {error && (
-        <div className="alert error" role="alert">
-          {error}
-        </div>
-      )}
-      <div className="tabs" role="group">
-        <button
-          className={tab === "events" ? "active" : ""}
-          onClick={() => { setTab("events"); navigate("/manage"); }}
-        >
-          Events
-        </button>
-        {admin && (
-          <button
-            className={tab === "assignments" ? "active" : ""}
-            onClick={() => { setTab("assignments"); navigate("/manage/assignments"); }}
-          >
-            Assignments
-          </button>
-        )}
-        {admin && (
-          <button
-            className={tab === "coordinators" ? "active" : ""}
-            onClick={() => { setTab("coordinators"); navigate("/manage/coordinators"); }}
-          >
-            Coordinators
-          </button>
-        )}
-      </div>
-      {tab === "events" && (
-        <div className="manage-grid">
-          <div>
-            <label className="search-label">
-              Find an event
-              <input
-                type="search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Title or sport"
-              />
-            </label>
-            {admin && (
-              <button
-                className="button-outline create-button"
-                onClick={() => {
-                  setSelected(null);
-                  setForm(blankEvent);
-                  setNotice("");
-                  setError("");
-                }}
-              >
-                + Add event
-              </button>
-            )}
-            <div className="manage-list">
-              {visible.map((event) => (
-                <button
-                  key={event.id}
-                  className={
-                    selected?.id === event.id
-                      ? "manage-item selected"
-                      : "manage-item"
-                  }
-                  onClick={() => choose(event)}
-                >
-                  <strong>{event.title}</strong>
-                  <small>
-                    {event.sport_name} · {event.division} · {event.status}
-                  </small>
-                </button>
-              ))}
-            </div>
-            {!visible.length && (
-              <p className="empty">No assigned events match this search.</p>
-            )}
-          </div>
-          <div className="edit-panel">
-            {!selected && !admin ? (
-              <p className="empty">
-                Choose an assigned event to enter results.
-              </p>
-            ) : (
-              <>
-                {admin && (
-                  <form onSubmit={submitEvent} className="form-stack">
-                    <h2>{selected ? "Event details" : "Add event"}</h2>
-                    <label>
-                      Event title
-                      <input
-                        value={form.title}
-                        onChange={(event) =>
-                          setForm({ ...form, title: event.target.value })
-                        }
-                        required
-                      />
-                    </label>
-                    <div className="form-two">
-                      <label>
-                        Sport
-                        <input
-                          value={form.sport_name}
-                          onChange={(event) =>
-                            setForm({ ...form, sport_name: event.target.value })
-                          }
-                        />
-                      </label>
-                      <label>
-                        Category (Boys/Girls/Mixed)
-                        <select
-                          value={form.sport_category}
-                          onChange={(event) =>
-                            setForm({
-                              ...form,
-                              sport_category: event.target.value,
-                            })
-                          }
-                        >
-                          <option value="">Open</option>
-                          {SPORTS_CATEGORIES.map((value) => (
-                            <option key={value}>{value}</option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                    <div className="form-two">
-                      <label>
-                        Type (event category)
-                        <input
-                          value={form.event_category}
-                          onChange={(event) =>
-                            setForm({
-                              ...form,
-                              event_category: event.target.value,
-                            })
-                          }
-                        />
-                      </label>
-                      <label>
-                        Division
-                        <select
-                          value={form.division}
-                          onChange={(event) =>
-                            setForm({
-                              ...form,
-                              division: event.target.value as Division,
-                            })
-                          }
-                        >
-                          {DIVISIONS.map((value) => (
-                            <option key={value}>{value}</option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                    <label>
-                      Coordinator
-                      <select
-                        value={form.coordinatorid ?? ""}
-                        onChange={(event) =>
-                          setForm({
-                            ...form,
-                            coordinatorid: event.target.value
-                              ? Number(event.target.value)
-                              : null,
-                          })
-                        }
-                      >
-                        <option value="">Unassigned</option>
-                        {coordinators.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.fullname}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <div className="button-row">
-                      <button disabled={saving}>
-                        {saving
-                          ? "Saving…"
-                          : selected
-                            ? "Save event"
-                            : "Create event"}
-                      </button>
-                      {selected && (
-                        <button
-                          type="button"
-                          className="button-danger"
-                          disabled={saving}
-                          onClick={() => {
-                            if (window.confirm(`Delete ${selected.title}?`))
-                              void run(async () => {
-                                await removeEvent(selected.id);
-                                setSelected(null);
-                              }, "Event deleted.");
-                          }}
-                        >
-                          Delete event
-                        </button>
-                      )}
-                    </div>
-                  </form>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      )}
-      {tab === "assignments" && admin && (
-        <Assignments
-          data={data}
-          coordinators={coordinators}
-          refresh={refresh}
-        />
-      )}
-      {tab === "coordinators" && admin && (
-        <CoordinatorAdmin
-          coordinators={coordinators}
-          reload={async () => setCoordinators(await loadCoordinators())}
-        />
-      )}
-    </section>
+    <EventManagement
+      data={data}
+      profile={profile}
+      admin={admin}
+      coordinators={coordinators}
+      loadError={error}
+      refresh={refresh}
+      navigate={navigate}
+    />
   );
 }
 
-function Assignments({
+const MANAGE_FILTERS_KEY = "prov_manage_event_filters";
+
+function EventManagement({
   data,
+  profile,
+  admin,
   coordinators,
+  loadError,
   refresh,
+  navigate,
 }: {
   data: AppData;
+  profile: Coordinator;
+  admin: boolean;
   coordinators: Coordinator[];
+  loadError: string;
   refresh: () => Promise<void>;
+  navigate: Nav;
 }) {
-  const [values, setValues] = useState<Record<number, string>>({});
+  const [selected, setSelected] = useState<MeetEvent | null>(null);
+  const [form, setForm] = useState({ ...blankEvent });
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [divisionFilter, setDivisionFilter] = useState("All Divisions");
+  const [sportFilter, setSportFilter] = useState("All Sports");
+  const [assignmentValues, setAssignmentValues] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
-  const [error, setError] = useState("");
-  async function save() {
+  const [error, setError] = useState(loadError);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const sports = useMemo(
+    () => [...new Set(data.events.map((item) => item.sport_name).filter((value): value is string => Boolean(value)))].sort(),
+    [data.events],
+  );
+  const visible = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return data.events.filter((event) => {
+      if (!admin && event.coordinatorid !== profile.id) return false;
+      if (divisionFilter !== "All Divisions" && event.division !== divisionFilter) return false;
+      if (sportFilter !== "All Sports" && event.sport_name !== sportFilter) return false;
+      return !query || `${event.title} ${event.sport_name ?? ""}`.toLowerCase().includes(query);
+    });
+  }, [data.events, admin, profile.id, search, divisionFilter, sportFilter]);
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem(MANAGE_FILTERS_KEY);
+    if (saved) {
+      try {
+        const filters = JSON.parse(saved) as { search?: string; division?: string; sport?: string };
+        setSearch(filters.search ?? "");
+        setDivisionFilter(filters.division ?? "All Divisions");
+        setSportFilter(filters.sport ?? "All Sports");
+      } catch { sessionStorage.removeItem(MANAGE_FILTERS_KEY); }
+    }
+    if (sessionStorage.getItem("prov_manage_new_event") === "1") {
+      sessionStorage.removeItem("prov_manage_new_event");
+      setSelected(null);
+      setForm({ ...blankEvent });
+      setEditorOpen(true);
+      window.setTimeout(() => editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    }
+  }, []);
+  useEffect(() => {
+    sessionStorage.setItem(MANAGE_FILTERS_KEY, JSON.stringify({ search, division: divisionFilter, sport: sportFilter }));
+  }, [search, divisionFilter, sportFilter]);
+
+  function openEditor(event?: MeetEvent) {
+    setSelected(event ?? null);
+    setForm(event ? {
+      title: event.title,
+      sport_name: event.sport_name ?? "",
+      sport_category: event.sport_category ?? "Boys",
+      event_category: event.event_category ?? "Individual",
+      division: event.division,
+      coordinatorid: event.coordinatorid,
+      status: event.status,
+    } : { ...blankEvent });
+    setEditorOpen(true);
+    setNotice("");
+    setError("");
+    window.setTimeout(() => editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  }
+  function resetFilters() {
+    setSearch("");
+    setDivisionFilter("All Divisions");
+    setSportFilter("All Sports");
+  }
+  async function submitEvent(event: FormEvent) {
+    event.preventDefault();
     setBusy(true);
     setError("");
     setNotice("");
     try {
-      const changes = Object.entries(values);
+      await saveEvent({ ...form, id: selected?.id });
+      await refresh();
+      setNotice(selected ? "Event updated successfully." : "Event created successfully.");
+      setSelected(null);
+      setForm({ ...blankEvent });
+      setEditorOpen(false);
+    } catch (cause) { setError(message(cause)); }
+    finally { setBusy(false); }
+  }
+  async function deleteEvent(event: MeetEvent) {
+    if (!window.confirm(`Delete ${event.title}? This cannot be undone.`)) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await removeEvent(event.id);
+      await refresh();
+      setAssignmentValues((current) => {
+        const next = { ...current };
+        delete next[event.id];
+        return next;
+      });
+      if (selected?.id === event.id) { setSelected(null); setEditorOpen(false); }
+      setNotice("Event deleted.");
+    } catch (cause) { setError(message(cause)); }
+    finally { setBusy(false); }
+  }
+  async function saveAssignments() {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const changes = Object.entries(assignmentValues);
       const { error: updateError } = await requireSupabase()
         .rpc("prov_set_event_assignments", {
           p_assignments: changes.map(([id, value]) => ({
@@ -497,7 +333,7 @@ function Assignments({
         });
       if (updateError) throw updateError;
       await refresh();
-      setValues({});
+      setAssignmentValues({});
       setNotice(`${changes.length} assignment(s) saved.`);
     } catch (cause) {
       setError(message(cause));
@@ -506,65 +342,74 @@ function Assignments({
     }
   }
   return (
-    <div>
-      <p>
-        Assign coordinators to events. Only assigned coordinators may enter
-        their results.
-      </p>
-      {notice && <div className="alert success">{notice}</div>}
-      {error && <div className="alert error">{error}</div>}
-      <div className="table-scroll">
-        <table className="meet-table">
+    <section className="panel staff-admin-page">
+      <div className="staff-page-header">
+        <div>
+          <span className="staff-page-icon"><i className="bi bi-calendar2-week" aria-hidden="true" /></span>
+          <div><h1>Event Management</h1><p>Administer events, divisions, and coordinators</p></div>
+        </div>
+        {admin && <button type="button" onClick={() => openEditor()}><i className="bi bi-plus-lg" /> Add Event</button>}
+      </div>
+      {notice && <div className="alert success" role="status">{notice}</div>}
+      {error && <div className="alert error" role="alert">{error}</div>}
+      {editorOpen && admin && (
+        <div className="staff-form-card" ref={editorRef}>
+          <div className="staff-card-heading"><h2>{selected ? "Edit Event" : "Add Event"}</h2><button type="button" className="staff-close-button" onClick={() => setEditorOpen(false)} aria-label="Close event form"><i className="bi bi-x-lg" /></button></div>
+          <form onSubmit={submitEvent} className="form-stack">
+            <label>Event Title<input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required /></label>
+            <div className="form-two">
+              <label>Sports Name<input value={form.sport_name} onChange={(event) => setForm({ ...form, sport_name: event.target.value })} required /></label>
+              <label>Division<select value={form.division} onChange={(event) => setForm({ ...form, division: event.target.value as Division })}>{DIVISIONS.map((value) => <option key={value}>{value}</option>)}</select></label>
+            </div>
+            <div className="form-two">
+              <label>Type<select value={form.event_category} onChange={(event) => setForm({ ...form, event_category: event.target.value })}><option>Individual</option><option>Team</option><option>Demonstration</option></select></label>
+              <label>Category<select value={form.sport_category} onChange={(event) => setForm({ ...form, sport_category: event.target.value })}>{SPORTS_CATEGORIES.map((value) => <option key={value}>{value}</option>)}</select></label>
+            </div>
+            <div className="form-two">
+              <label>Assigned Coordinator<select value={form.coordinatorid ?? ""} onChange={(event) => setForm({ ...form, coordinatorid: event.target.value ? Number(event.target.value) : null })}><option value="">Unassigned</option>{coordinators.map((item) => <option key={item.id} value={item.id}>{item.fullname}</option>)}</select></label>
+              <label>Status<select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as MeetEvent["status"] })}><option>Pending</option><option>Completed</option></select></label>
+            </div>
+            <div className="button-row"><button disabled={busy}>{busy ? "Saving…" : selected ? "Save Changes" : "Create Event"}</button><button type="button" className="button-outline" onClick={() => setEditorOpen(false)}>Cancel</button></div>
+          </form>
+        </div>
+      )}
+      <div className="staff-filter-bar">
+        <label><span>Search</span><div className="staff-search-input"><i className="bi bi-search" /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search event title or sport" /></div></label>
+        <label><span>Division</span><select value={divisionFilter} onChange={(event) => setDivisionFilter(event.target.value)}><option>All Divisions</option>{DIVISIONS.map((value) => <option key={value}>{value}</option>)}</select></label>
+        <label><span>Sport</span><select value={sportFilter} onChange={(event) => setSportFilter(event.target.value)}><option>All Sports</option>{sports.map((value) => <option key={value}>{value}</option>)}</select></label>
+        <button type="button" className="button-outline staff-reset-button" onClick={resetFilters}><i className="bi bi-arrow-counterclockwise" /> Reset</button>
+      </div>
+      <p className="staff-result-count">Showing {visible.length} of {admin ? data.events.length : data.events.filter((item) => item.coordinatorid === profile.id).length} events</p>
+      <div className="staff-table-card">
+        <table className="staff-responsive-table event-admin-table">
           <thead>
-            <tr>
-              <th>Event</th>
-              <th>Division</th>
-              <th>Coordinator</th>
-            </tr>
+            <tr><th>Classification</th><th>Event Title</th>{admin && <th>Assigned Coordinator</th>}<th>Action</th></tr>
           </thead>
           <tbody>
-            {data.events.map((event) => (
+            {visible.map((event) => (
               <tr key={event.id}>
-                <td>{event.title}</td>
-                <td>{event.division}</td>
-                <td>
-                  <select
-                    aria-label={`Coordinator for ${event.title}`}
-                    value={
-                      values[event.id] ?? String(event.coordinatorid ?? "")
-                    }
-                    onChange={(change) =>
-                      setValues({ ...values, [event.id]: change.target.value })
-                    }
-                  >
-                    <option value="">Unassigned</option>
-                    {coordinators.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.fullname}
-                      </option>
-                    ))}
-                  </select>
-                </td>
+                <td data-label="Classification"><div className="staff-badge-stack"><span className="staff-division-badge">{event.division}</span><span>{event.sport_name || "No sport"}</span></div></td>
+                <td data-label="Event Title"><strong className="staff-event-title">{event.title}</strong><small>{event.sport_category || "Open"} · {event.event_category || "Event"} · <span className={event.status === "Completed" ? "staff-status completed" : "staff-status"}>{event.status}</span></small></td>
+                {admin && <td data-label="Coordinator"><select aria-label={`Coordinator for ${event.title}`} value={assignmentValues[event.id] ?? String(event.coordinatorid ?? "")} onChange={(change) => setAssignmentValues({ ...assignmentValues, [event.id]: change.target.value })}><option value="">Unassigned</option>{coordinators.map((item) => <option key={item.id} value={item.id}>{item.fullname}</option>)}</select></td>}
+                <td data-label="Action"><div className="staff-actions"><button type="button" className="staff-icon-button edit" onClick={() => admin ? openEditor(event) : navigate(`/scoring/${event.id}`)} aria-label={admin ? `Edit ${event.title}` : `Enter results for ${event.title}`}><i className={admin ? "bi bi-pencil-square" : "bi bi-trophy"} /></button>{admin && <button type="button" className="staff-icon-button delete" disabled={busy} onClick={() => void deleteEvent(event)} aria-label={`Delete ${event.title}`}><i className="bi bi-trash3" /></button>}</div></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <button
-        disabled={busy || !Object.keys(values).length}
-        onClick={() => void save()}
-      >
-        {busy ? "Saving…" : "Save assignments"}
-      </button>
-    </div>
+      {!visible.length && <p className="empty">No events match the selected filters.</p>}
+      {admin && <div className="staff-save-row"><button disabled={busy || !Object.keys(assignmentValues).length} onClick={() => void saveAssignments()}><i className="bi bi-floppy" /> {busy ? "Saving…" : `Save Coordinator Assignments${Object.keys(assignmentValues).length ? ` (${Object.keys(assignmentValues).length})` : ""}`}</button></div>}
+    </section>
   );
 }
 
 function CoordinatorAdmin({
   coordinators,
+  loadError,
   reload,
 }: {
   coordinators: Coordinator[];
+  loadError: string;
   reload: () => Promise<void>;
 }) {
   const [username, setUsername] = useState("");
@@ -578,7 +423,9 @@ function CoordinatorAdmin({
   const [editName, setEditName] = useState("");
   const [editAdmin, setEditAdmin] = useState(false);
   const [resetPassword, setResetPassword] = useState("");
-  async function request(action: string, extra: Record<string, unknown>) {
+  const [showCreate, setShowCreate] = useState(false);
+  const editRef = useRef<HTMLDivElement>(null);
+  async function request(action: string, extra: Record<string, unknown>, success: string) {
     setBusy(true);
     setError("");
     setNotice("");
@@ -604,162 +451,39 @@ function CoordinatorAdmin({
       }
       if (data?.error) throw new Error(data.error);
       await reload();
-      setNotice("Coordinator account updated.");
+      setNotice(success);
+      return true;
     } catch (cause) {
       setError(message(cause));
+      return false;
     } finally {
       setBusy(false);
     }
   }
+  async function createCoordinator(event: FormEvent) {
+    event.preventDefault();
+    const success = await request("create", { username, fullname, password, isAdmin }, "Coordinator account created.");
+    if (success) { setUsername(""); setFullname(""); setPassword(""); setIsAdmin(false); setShowCreate(false); }
+  }
+  function beginEdit(item: Coordinator) {
+    setEditing(item.id);
+    setEditName(item.fullname);
+    setEditAdmin(item.is_admin);
+    setResetPassword("");
+    setNotice("");
+    setError("");
+    window.setTimeout(() => editRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  }
   return (
-    <div className="manage-grid">
-      <form
-        className="form-stack"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void request("create", {
-            username,
-            fullname,
-            password,
-            isAdmin,
-          }).then(() => {
-            setPassword("");
-          });
-        }}
-      >
-        <h2>Add coordinator</h2>
-        {error && <div className="alert error">{error}</div>}
-        {notice && <div className="alert success">{notice}</div>}
-        <label>
-          Username
-          <input
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            pattern="[a-zA-Z0-9._-]+"
-            required
-          />
-        </label>
-        <label>
-          Full name
-          <input
-            value={fullname}
-            onChange={(event) => setFullname(event.target.value)}
-            required
-          />
-        </label>
-        <label>
-          Temporary password
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            minLength={6}
-            required
-          />
-        </label>
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={isAdmin}
-            onChange={(event) => setIsAdmin(event.target.checked)}
-          />{" "}
-          Administrator
-        </label>
-        <button disabled={busy}>Create account</button>
-      </form>
-      <div>
-        <h2>Existing coordinators</h2>
-        <div className="manage-list">
-          {coordinators.map((item) => (
-            <div className="coordinator-item" key={item.id}>
-              <div>
-                <strong>{item.fullname}</strong>
-                <small>
-                  @{item.username} · {item.is_admin ? "Admin" : "Coordinator"}
-                </small>
-              </div>
-              <div className="button-row">
-                <button
-                  className="button-outline"
-                  disabled={busy}
-                  onClick={() => {
-                    setEditing(editing === item.id ? null : item.id);
-                    setEditName(item.fullname);
-                    setEditAdmin(item.is_admin);
-                    setResetPassword("");
-                  }}
-                >
-                  Edit
-                </button>
-                <button
-                  className="button-danger"
-                  disabled={busy}
-                  onClick={() => {
-                    if (window.confirm(`Delete coordinator ${item.username}?`))
-                      void request("delete", { id: item.id });
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
-              {editing === item.id && (
-                <div className="coordinator-edit form-stack">
-                  <label>
-                    Full name
-                    <input
-                      value={editName}
-                      onChange={(event) => setEditName(event.target.value)}
-                    />
-                  </label>
-                  <label className="checkbox">
-                    <input
-                      type="checkbox"
-                      checked={editAdmin}
-                      onChange={(event) => setEditAdmin(event.target.checked)}
-                    />{" "}
-                    Administrator
-                  </label>
-                  <button
-                    disabled={busy}
-                    onClick={() =>
-                      void request("update", {
-                        id: item.id,
-                        fullname: editName,
-                        isAdmin: editAdmin,
-                      })
-                    }
-                  >
-                    Save details
-                  </button>
-                  <label>
-                    New temporary password
-                    <input
-                      type="password"
-                      autoComplete="new-password"
-                      minLength={6}
-                      value={resetPassword}
-                      onChange={(event) => setResetPassword(event.target.value)}
-                    />
-                  </label>
-                  <button
-                    className="button-outline"
-                    disabled={busy || resetPassword.length < 6}
-                    onClick={() =>
-                      void request("reset-password", {
-                        id: item.id,
-                        password: resetPassword,
-                      }).then(() => setResetPassword(""))
-                    }
-                  >
-                    Reset password
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+    <section className="panel staff-admin-page">
+      <div className="staff-page-header"><div><span className="staff-page-icon"><i className="bi bi-people-fill" /></span><div><h1>Coordinator Directory</h1><p>Manage system access credentials</p></div></div><button type="button" onClick={() => { setShowCreate(true); setEditing(null); }}><i className="bi bi-person-plus-fill" /> Add New</button></div>
+      {(error || loadError) && <div className="alert error" role="alert">{error || loadError}</div>}
+      {notice && <div className="alert success" role="status">{notice}</div>}
+      {showCreate && <div className="staff-form-card"><div className="staff-card-heading"><h2>Add Coordinator</h2><button type="button" className="staff-close-button" onClick={() => setShowCreate(false)} aria-label="Close coordinator form"><i className="bi bi-x-lg" /></button></div><form className="form-stack" onSubmit={createCoordinator}><div className="form-two"><label>Full Name<input value={fullname} onChange={(event) => setFullname(event.target.value)} required /></label><label>Username<input value={username} onChange={(event) => setUsername(event.target.value)} pattern="[a-zA-Z0-9._-]+" required /></label></div><label>Account Password<input type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={6} required /></label><label className="checkbox"><input type="checkbox" checked={isAdmin} onChange={(event) => setIsAdmin(event.target.checked)} /> Administrator access</label><div className="button-row"><button disabled={busy}>{busy ? "Creating…" : "Create Account"}</button><button type="button" className="button-outline" onClick={() => setShowCreate(false)}>Cancel</button></div></form></div>}
+      <div className="staff-table-card"><table className="staff-responsive-table coordinator-admin-table"><thead><tr><th>Full Name</th><th>Username</th><th>Access Level</th><th>Actions</th></tr></thead><tbody>{coordinators.map((item) => <tr key={item.id}><td data-label="Full Name"><strong>{item.fullname}</strong></td><td data-label="Username">@{item.username}</td><td data-label="Access Level"><span className={item.is_admin ? "staff-role-badge admin" : "staff-role-badge"}>{item.is_admin ? "Administrator" : "Coordinator"}</span></td><td data-label="Actions"><div className="staff-actions"><button type="button" className="staff-icon-button edit" disabled={busy} onClick={() => beginEdit(item)} aria-label={`Edit ${item.fullname}`}><i className="bi bi-pencil-square" /></button><button type="button" className="staff-icon-button delete" disabled={busy} onClick={() => { if (window.confirm(`Delete coordinator ${item.username}?`)) void request("delete", { id: item.id }, "Coordinator account deleted."); }} aria-label={`Delete ${item.fullname}`}><i className="bi bi-trash3" /></button></div></td></tr>)}</tbody></table></div>
+      {!coordinators.length && !loadError && <p className="empty">No coordinator accounts found.</p>}
+      {editing !== null && (() => { const item = coordinators.find((value) => value.id === editing); if (!item) return null; return <div className="staff-form-card" ref={editRef}><div className="staff-card-heading"><h2>Edit Coordinator</h2><button type="button" className="staff-close-button" onClick={() => setEditing(null)} aria-label="Close edit form"><i className="bi bi-x-lg" /></button></div><div className="form-stack"><label>Username<input value={item.username} disabled /></label><label>Full Name<input value={editName} onChange={(event) => setEditName(event.target.value)} required /></label><label className="checkbox"><input type="checkbox" checked={editAdmin} onChange={(event) => setEditAdmin(event.target.checked)} /> Administrator access</label><div className="button-row"><button type="button" disabled={busy || !editName.trim()} onClick={async () => { const success = await request("update", { id: item.id, fullname: editName, isAdmin: editAdmin }, "Coordinator details updated."); if (success) setEditing(null); }}>{busy ? "Saving…" : "Save Details"}</button></div><div className="staff-password-reset"><h3>Reset Password</h3><label>New Temporary Password<input type="password" autoComplete="new-password" minLength={6} value={resetPassword} onChange={(event) => setResetPassword(event.target.value)} /></label><button type="button" className="button-outline" disabled={busy || resetPassword.length < 6} onClick={async () => { const success = await request("reset-password", { id: item.id, password: resetPassword }, "Password reset successfully."); if (success) setResetPassword(""); }}>Reset Password</button></div></div></div>; })()}
+    </section>
   );
 }
 

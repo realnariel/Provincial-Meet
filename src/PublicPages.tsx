@@ -744,6 +744,20 @@ export function EventsPage({
       ].sort(),
     [data.events],
   );
+  useEffect(() => {
+    if (sport !== "All Sports" && !sports.includes(sport)) setSport("All Sports");
+    if (category !== "All Categories" && !SPORTS_CATEGORIES.includes(category)) setCategory("All Categories");
+    if (!["Overall", ...DIVISIONS].includes(division)) setDivision("Overall");
+    if (!["All Statuses", "Pending", "Completed"].includes(status)) setStatus("All Statuses");
+  }, [sports, sport, category, division, status]);
+  function resetFilters() {
+    setQuery("");
+    setSport("All Sports");
+    setCategory("All Categories");
+    setDivision("Overall");
+    setStatus("All Statuses");
+    setAssignedOnly(false);
+  }
   const scopedEvents =
     assignedOnly && profile
       ? data.events.filter((event) => event.coordinatorid === profile.id)
@@ -878,7 +892,10 @@ export function EventsPage({
             </button>
           )}
           {admin && (
-            <button type="button" onClick={() => navigate("/manage")}>
+            <button type="button" onClick={() => {
+              sessionStorage.setItem("prov_manage_new_event", "1");
+              navigate("/manage");
+            }}>
               <i className="bi bi-plus-lg" aria-hidden="true" /> Add event
             </button>
           )}
@@ -977,6 +994,11 @@ export function EventsPage({
             <option>Completed</option>
           </select>
         </label>
+        <div className="events-filter-actions">
+          <button type="button" className="button-outline" onClick={resetFilters}>
+            <i className="bi bi-arrow-counterclockwise" aria-hidden="true" /> Reset filters
+          </button>
+        </div>
       </div>
       <p className="result-count events-result-count">
         {filtered.length} of {scopedEvents.length} events
