@@ -426,8 +426,8 @@
     font-size: 0.85rem;
   }
   .tally-areas {
-    font-size: 0.5rem;
-    letter-spacing: 0.1em;
+    font-size: clamp(0.39rem, 1.8vw, 0.5rem);
+    letter-spacing: 0.015em;
   }
   .tally-title {
     font-size: 1.4rem;

@@ -7,7 +7,7 @@ import {
   saveQualifier,
   saveQualifiers,
 } from "./data";
-import { MEET_DATE } from "./meet-config";
+import { MEET_DATE, MEET_VENUE } from "./meet-config";
 import {
   compareMedals,
   DIVISIONS,
@@ -454,11 +454,10 @@ function ReportHeader({
 }
 
 function Signatures({ values }: { values: Signatory[] }) {
+  const visible = values.filter((item) => item.name || item.designation);
   return (
-    <div className="cong-report-signatures">
-      {values
-        .filter((item) => item.name || item.designation)
-        .map((item, index) => (
+    <div className={`cong-report-signatures signatures-${Math.min(visible.length, 3)}`}>
+      {visible.map((item, index) => (
           <div key={index}>
             <strong>{item.name || "_________________________"}</strong>
             <span>{item.designation || "_________________________"}</span>
@@ -468,9 +467,11 @@ function Signatures({ values }: { values: Signatory[] }) {
   );
 }
 
-function printReport(landscape = false) {
+function printReport(landscape = false, generalA4 = false) {
   const style = document.createElement("style");
-  style.textContent = `@page { size: A4 ${landscape ? "landscape" : "portrait"}; margin: .45in; }`;
+  style.textContent = generalA4
+    ? "@page { size: A4 landscape; margin: .5in; }"
+    : `@page { size: A4 ${landscape ? "landscape" : "portrait"}; margin: .45in; }`;
   document.head.appendChild(style);
   const cleanup = () => style.remove();
   window.addEventListener("afterprint", cleanup, { once: true });
@@ -482,10 +483,12 @@ function PreviewToolbar({
   onBack,
   onExcel,
   landscape = false,
+  generalA4 = false,
 }: {
   onBack: () => void;
   onExcel?: () => Promise<void>;
   landscape?: boolean;
+  generalA4?: boolean;
 }) {
   const [exporting, setExporting] = useState(false);
   return (
@@ -494,7 +497,7 @@ function PreviewToolbar({
         <i className="bi bi-arrow-left" /> Back to Configuration
       </button>
       <div>
-        <button type="button" onClick={() => printReport(landscape)}>
+        <button type="button" onClick={() => printReport(landscape, generalA4)}>
           <i className="bi bi-printer" /> Print / Save PDF
         </button>
         {onExcel && (
@@ -733,7 +736,8 @@ function GeneralReport({ data, navigate }: { data: AppData; navigate: Nav }) {
     );
   return (
     <>
-      <PreviewToolbar onBack={() => setPreview(false)} landscape />
+      <PreviewToolbar onBack={() => setPreview(false)} landscape generalA4 />
+      <div className="cong-general-preview">
       <div className="cong-general-sheet">
         <aside className="cong-report-poster">
           <div className="cong-poster-logos">
@@ -745,23 +749,45 @@ function GeneralReport({ data, navigate }: { data: AppData; navigate: Nav }) {
             />
             <img src="/images/bohol_logo.png" alt="Province of Bohol" />
           </div>
-          <p>
-            One Province · One Spirit
-            <br />
-            Brighter Futures
-          </p>
           <img src="/images/meet-art.svg" alt="" />
-          <strong>PROVINCE OF BOHOL</strong>
-          <h2>
-            PROVINCIAL ATHLETIC MEET <b>2026</b>
-          </h2>
-          <span>ELEMENTARY · SECONDARY · PARAGAMES</span>
-          <em>
-            “Strong Together.
-            <br />
-            Greater Tomorrow”
+          <div className="cong-poster-title" aria-label="Bohol Provincial Athletic Meet 2026">
+            <strong>BOHOL</strong>
+            <span>PROVINCIAL ATHLETIC MEET</span>
+            <b>2026</b>
+          </div>
+          <div className="cong-poster-teams" aria-label="Participating teams">
+            <span>
+              <b>CD 1</b>
+              <b>CD 2</b>
+              <b>CD 3</b>
+              <b>BIT-IC</b>
+            </span>
+            <span>
+              <b>BACS TALIBON</b>
+              <b>BACS TAGBILARAN</b>
+            </span>
+          </div>
+          <em className="cong-poster-theme">
+            “Stronger Together: Igniting Camaraderie, Compassion, and Unity
+            through Sports”
           </em>
-          <small>{MEET_DATE}</small>
+          <div className="cong-poster-schedule">
+            <small className="cong-poster-date">
+              <i className="bi bi-calendar3" aria-hidden="true" />
+              {MEET_DATE}
+            </small>
+            <small className="cong-poster-venue">
+              <i className="bi bi-geo-alt-fill" aria-hidden="true" />
+              {MEET_VENUE}
+            </small>
+          </div>
+          <div className="cong-poster-sports" aria-hidden="true">
+            <span>⚽</span>
+            <span>🏀</span>
+            <span>🏸</span>
+            <span>🏐</span>
+            <span>🏆</span>
+          </div>
         </aside>
         <main>
           <div className="cong-report-header">
@@ -790,6 +816,7 @@ function GeneralReport({ data, navigate }: { data: AppData; navigate: Nav }) {
           <h3 className="cong-cert-title">Certified Correct:</h3>
           <Signatures values={signatories} />
         </main>
+      </div>
       </div>
     </>
   );
@@ -1021,7 +1048,7 @@ function StandardReport({
           )
         }
       />
-      <div className="cong-report-sheet">
+      <div className={`cong-report-sheet cong-standard-sheet cong-${report}-sheet`}>
         <ReportHeader
           title={
             report === "results"
@@ -1132,6 +1159,7 @@ function ResultsTable({
   return (
     <>
       <h3 className="cong-section-title">EVENT RESULTS</h3>
+      <div className="cong-table-scroll">
       <table
         id="results-report-table"
         className="cong-official-table result-table"
@@ -1156,6 +1184,7 @@ function ResultsTable({
           )}
         </tbody>
       </table>
+      </div>
     </>
   );
 }
@@ -1219,6 +1248,7 @@ function PendingTable({ events }: { events: MeetEvent[] }) {
   return (
     <>
       <h3 className="cong-section-title">SCHEDULED PENDING EVENTS</h3>
+      <div className="cong-table-scroll">
       <table
         id="pending-report-table"
         className="cong-official-table pending-table"
@@ -1241,6 +1271,7 @@ function PendingTable({ events }: { events: MeetEvent[] }) {
           )}
         </tbody>
       </table>
+      </div>
     </>
   );
 }
@@ -2310,7 +2341,7 @@ function PlayerReport({
   };
   return (
     <section className="cong-player-report">
-      <div className="cong-player-sheet">
+      <div className="cong-player-sheet cong-player-print-sheet">
         <h1>{showEvents ? "Player Event Report" : "Player Medal Report"}</h1>
         <p>Bohol Provincial Athletic Meet 2026</p>
         <div className="cong-player-actions no-print">
@@ -2588,7 +2619,7 @@ function PlayerTotalsTable({
   );
 }
 
-export function CongMeetReportsPage({
+export function ProvincialReportsPage({
   data,
   path,
   admin,

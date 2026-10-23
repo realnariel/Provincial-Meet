@@ -5,7 +5,7 @@ import { isConfigured, supabase } from "./supabase";
 import type { Coordinator, EventAward, MedalRow, MeetEvent, Team } from "./types";
 import { HomePage, RankingsPage, EventsPage, TeamsPage } from "./PublicPages";
 import { LoginPage, ManagePage } from "./StaffPages";
-import { CongMeetReportsPage } from "./CongMeetReportsPage";
+import { ProvincialReportsPage } from "./ProvincialReportsPage";
 import { DelegationPage, OfficialScoringPage } from "./WorkflowPages";
 
 export interface AppData {
@@ -325,7 +325,7 @@ export default function App() {
     );
   else if (path.startsWith("/reports"))
     content = (
-      <CongMeetReportsPage
+      <ProvincialReportsPage
         data={data}
         path={path}
         admin={admin}
