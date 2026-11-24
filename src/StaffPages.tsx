@@ -133,64 +133,124 @@ export function LoginPage({
     // Synthetic credential accounts (@accounts.provmeet.example.com) are username/password logins, never Google sign-ups!
     if (!email || email.toLowerCase().endsWith("@accounts.provmeet.example.com")) return;
 
-    const flow = sessionStorage.getItem("google_auth_flow");
+    const currentFlow =
+      new URLSearchParams(window.location.search).get("flow") ||
+      localStorage.getItem("google_auth_flow") ||
+      sessionStorage.getItem("google_auth_flow") ||
+      "signup";
 
-    // If the user clicked "Sign in with Google", but does NOT have a coordinator profile:
-    if (flow === "signin") {
-      sessionStorage.removeItem("google_auth_flow");
-      setError(
-        `No coordinator account found for ${email}. Please sign up first to register your account.`,
-      );
-      setMode("signup");
-      // Sign out of the temporary auth session so they are not left in pending auth state
-      if (onSignOut) {
-        onSignOut();
-      } else if (supabase) {
-        void supabase.auth.signOut();
+    // If it was a signup flow, register immediately!
+    if (currentFlow !== "signin") {
+      void registerUserRequest();
+    } else {
+      // If signin, check if already in requests table
+      if (supabase) {
+        void supabase
+          .from("prov_coordinator_requests")
+          .select("id")
+          .eq("auth_user_id", session.user.id)
+          .maybeSingle()
+          .then(({ data: existing }) => {
+            if (existing) setRequestRecorded(true);
+          });
       }
-      return;
     }
+  }, [session, profile]);
 
-    // Otherwise, flow === "signup" (or explicit registration): record pending request
-    const db = supabase;
-    if (!db) return;
+  async function registerUserRequest(): Promise<boolean> {
+    if (!supabase || !session?.user) return false;
+    const email = session.user.email ?? "";
     const rawName =
       (session.user.user_metadata?.full_name as string | undefined) ||
       (session.user.user_metadata?.name as string | undefined) ||
       email.split("@")[0] ||
       "Coordinator";
-    void Promise.resolve(
-      db
+    try {
+      const { data: existing } = await supabase
         .from("prov_coordinator_requests")
-        .upsert(
-          {
-            auth_user_id: session.user.id,
-            email,
-            fullname: rawName,
-            status: "pending",
-          },
-          { onConflict: "auth_user_id" },
-        ),
-    )
-      .then(({ error: upsertErr }) => {
-        if (!upsertErr) setRequestRecorded(true);
-      })
-      .catch(() => {});
-  }, [session, profile, onSignOut]);
+        .select("id,status")
+        .eq("auth_user_id", session.user.id)
+        .maybeSingle();
+
+      if (existing) {
+        setRequestRecorded(true);
+        return true;
+      }
+
+      const { error: insErr } = await supabase.from("prov_coordinator_requests").insert({
+        auth_user_id: session.user.id,
+        email,
+        fullname: rawName,
+        status: "pending",
+      });
+
+      if (!insErr) {
+        setRequestRecorded(true);
+        return true;
+      }
+
+      const { error: upsertErr } = await supabase.from("prov_coordinator_requests").upsert(
+        {
+          auth_user_id: session.user.id,
+          email,
+          fullname: rawName,
+          status: "pending",
+        },
+        { onConflict: "auth_user_id" },
+      );
+
+      if (!upsertErr) {
+        setRequestRecorded(true);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  async function submitRegistration() {
+    setBusy(true);
+    setError("");
+    const ok = await registerUserRequest();
+    if (ok) {
+      localStorage.setItem("google_auth_flow", "signup");
+      sessionStorage.setItem("google_auth_flow", "signup");
+      setRequestRecorded(true);
+      setStatusFeedback("Registration submitted! Queued for administrator confirmation in Coordinator Directory.");
+    } else {
+      setError("Could not submit registration. Please try again or check your connection.");
+    }
+    setBusy(false);
+  }
+
+  async function handleSignOut() {
+    localStorage.removeItem("google_auth_flow");
+    sessionStorage.removeItem("google_auth_flow");
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+    setMode("signin");
+    setError("");
+    setStatusFeedback("");
+    window.history.replaceState(null, "", "/login");
+  }
 
   async function handleGoogleAuth(flow: "signin" | "signup") {
     setBusy(true);
     setError("");
+    localStorage.setItem("google_auth_flow", flow);
     sessionStorage.setItem("google_auth_flow", flow);
     try {
       const { error: oauthError } = await requireSupabase().auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/login`,
+          redirectTo: `${window.location.origin}/login?flow=${flow}`,
         },
       });
       if (oauthError) throw oauthError;
     } catch (cause) {
+      localStorage.removeItem("google_auth_flow");
       sessionStorage.removeItem("google_auth_flow");
       setError(message(cause));
       setBusy(false);
@@ -285,17 +345,41 @@ export function LoginPage({
       (session.user.user_metadata?.full_name as string | undefined) ||
       (session.user.user_metadata?.name as string | undefined) ||
       "Google User";
+
+    const currentFlow =
+      new URLSearchParams(window.location.search).get("flow") ||
+      localStorage.getItem("google_auth_flow") ||
+      sessionStorage.getItem("google_auth_flow") ||
+      "signup";
+
+    const isSignInAttempt = currentFlow === "signin" && !requestRecorded;
+
     return (
       <section className="panel auth-card pending-auth-card">
-        <span className="eyebrow dark">Coordinator Registration</span>
-        <div className="pending-status-banner confirmation-banner">
-          <div className="pending-badge-icon confirmation-badge-icon">
-            <i className="bi bi-check-circle-fill" aria-hidden="true" />
+        <span className="eyebrow dark">
+          {isSignInAttempt ? "Coordinator Sign-in" : "Coordinator Registration"}
+        </span>
+        <div
+          className={`pending-status-banner ${isSignInAttempt ? "unapproved-banner" : "confirmation-banner"}`}
+        >
+          <div
+            className={`pending-badge-icon ${isSignInAttempt ? "unapproved-badge-icon" : "confirmation-badge-icon"}`}
+          >
+            <i
+              className={isSignInAttempt ? "bi bi-shield-exclamation" : "bi bi-check-circle-fill"}
+              aria-hidden="true"
+            />
           </div>
           <div>
-            <h1>Sign-up Successful!</h1>
+            <h1>{isSignInAttempt ? "Account Not Yet Approved" : "Sign-up Successful!"}</h1>
             <span className="pending-status-pill">
-              <i className="bi bi-hourglass-split" aria-hidden="true" /> Waiting for Administrator Confirmation
+              <i
+                className={isSignInAttempt ? "bi bi-clock-history" : "bi bi-hourglass-split"}
+                aria-hidden="true"
+              />{" "}
+              {isSignInAttempt
+                ? "Approval or Registration Required"
+                : "Waiting for Administrator Confirmation"}
             </span>
           </div>
         </div>
@@ -310,20 +394,34 @@ export function LoginPage({
             <span className="pending-detail-value email-accent">{session.user.email}</span>
           </div>
           <div className="pending-detail-row">
-            <span className="pending-detail-label">Submission Status</span>
+            <span className="pending-detail-label">Status</span>
             <span className="pending-detail-value">
-              {requestRecorded ? "Application Recorded & Queued for Approval" : "Sign-up Received"}
+              {requestRecorded
+                ? "Application Queued for Administrator Approval"
+                : isSignInAttempt
+                  ? "Not Yet Approved in System"
+                  : "Sign-up Received"}
             </span>
           </div>
         </div>
 
-        <div className="alert info-status" role="status">
-          <div>
-            <strong>Registration Received & Confirmed</strong>
-            <p style={{ margin: "0.35rem 0 0", fontSize: "0.86rem", lineHeight: 1.45 }}>
-              Your Google account is now registered with Bohol Provincial Meet. An administrator will review and confirm your account in the <strong>Coordinator Directory</strong> to assign your permissions. Once confirmed, you can sign in directly with Google.
-            </p>
-          </div>
+        <div className={`alert ${isSignInAttempt ? "warning" : "info-status"}`} role="status">
+          {isSignInAttempt ? (
+            <div>
+              <strong>No Approved Coordinator Profile Found</strong>
+              <p style={{ margin: "0.35rem 0 0", fontSize: "0.86rem", lineHeight: 1.45 }}>
+                You signed in with <strong>{session.user.email}</strong>, but this Google account is not yet authorized in the system.
+                If you have not registered yet, click <strong>"Submit Coordinator Registration"</strong> below so the administrator can confirm your access in the <strong>Coordinator Directory</strong>.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <strong>Registration Received & Confirmed</strong>
+              <p style={{ margin: "0.35rem 0 0", fontSize: "0.86rem", lineHeight: 1.45 }}>
+                Your Google account is now registered with Bohol Provincial Meet. An administrator will review and confirm your account in the <strong>Coordinator Directory</strong> to assign your permissions. Once confirmed, you can sign in directly with Google.
+              </p>
+            </div>
+          )}
         </div>
 
         {statusFeedback && (
@@ -334,6 +432,18 @@ export function LoginPage({
         )}
 
         <div className="auth-action-stack">
+          {isSignInAttempt && (
+            <button
+              type="button"
+              className="approve-action-btn"
+              style={{ justifyContent: "center", padding: "0.65rem 1rem", fontSize: "0.92rem" }}
+              disabled={busy}
+              onClick={() => void submitRegistration()}
+            >
+              <i className="bi bi-person-check-fill" aria-hidden="true" />
+              <span>{busy ? "Submitting Registration…" : "Submit Coordinator Registration"}</span>
+            </button>
+          )}
           <button
             type="button"
             className="check-status-btn"
@@ -346,13 +456,7 @@ export function LoginPage({
           <button
             type="button"
             className="secondary-btn auth-signout-btn"
-            onClick={() => {
-              if (onSignOut) {
-                onSignOut();
-              } else {
-                void requireSupabase().auth.signOut();
-              }
-            }}
+            onClick={() => void handleSignOut()}
           >
             <i className="bi bi-box-arrow-right" aria-hidden="true" />
             <span>Sign out / Switch account</span>

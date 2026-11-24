@@ -1795,6 +1795,14 @@ textarea:focus-visible {
   color: #166534 !important;
   box-shadow: 0 0 0 4px #bbf7d0;
 }
+.unapproved-banner {
+  border-bottom: 2px solid #fcd34d;
+}
+.unapproved-badge-icon {
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+  box-shadow: 0 0 0 4px #fde68a;
+}
 .pending-role-select {
   padding: 0.35rem 0.65rem;
   font-size: 0.82rem;

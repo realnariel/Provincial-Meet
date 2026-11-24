@@ -33,12 +33,16 @@ export interface AppData {
 const emptyData: AppData = { teams: [], events: [], awards: [], tallies: [] };
 
 function currentPath() {
-  if (
-    typeof window !== "undefined" &&
-    (window.location.hash.includes("access_token") ||
-      window.location.search.includes("code="))
-  ) {
-    return "/login";
+  if (typeof window !== "undefined") {
+    const search = window.location.search;
+    const hash = window.location.hash;
+    if (
+      search.includes("code=") ||
+      hash.includes("access_token=") ||
+      search.includes("flow=")
+    ) {
+      return "/login";
+    }
   }
   return window.location.pathname.replace(/\/$/, "") || "/";
 }
@@ -66,6 +70,8 @@ export default function App() {
 
   const signOut = useCallback(async () => {
     if (!supabase) return;
+    localStorage.removeItem("google_auth_flow");
+    sessionStorage.removeItem("google_auth_flow");
     const { error: signOutError } = await supabase.auth.signOut();
     if (signOutError) {
       setError(`Sign-out failed: ${signOutError.message}`);
@@ -102,21 +108,17 @@ export default function App() {
     const client = supabase;
     void client.auth.getSession().then(({ data: result }) => {
       setSession(result.session);
-      const hadAuthHash =
-        window.location.hash.includes("access_token") ||
-        window.location.search.includes("code=");
-      if (hadAuthHash) {
-        window.history.replaceState(null, "", "/login");
-        setPath("/login");
-      }
     });
     const { data: listener } = client.auth.onAuthStateChange((event, next) => {
       setSession(next);
       if (event === "SIGNED_IN" && next?.user) {
-        const hadAuthHash =
-          window.location.hash.includes("access_token") ||
-          window.location.search.includes("code=");
-        if (hadAuthHash || window.location.pathname === "/login") {
+        const isOAuthReturn =
+          window.location.search.includes("code=") ||
+          window.location.hash.includes("access_token=") ||
+          window.location.search.includes("flow=") ||
+          Boolean(localStorage.getItem("google_auth_flow"));
+
+        if (isOAuthReturn || window.location.pathname === "/login") {
           window.history.replaceState(null, "", "/login");
           setPath("/login");
         }
@@ -132,7 +134,11 @@ export default function App() {
     // Only register real Google users. Never register synthetic username/password accounts!
     if (!email || email.toLowerCase().endsWith("@accounts.provmeet.example.com")) return;
 
-    const flow = sessionStorage.getItem("google_auth_flow");
+    const flow =
+      new URLSearchParams(window.location.search).get("flow") ||
+      localStorage.getItem("google_auth_flow") ||
+      sessionStorage.getItem("google_auth_flow");
+
     // If the user clicked "Sign in with Google", do not auto-register as pending sign-up!
     if (flow === "signin") return;
 
@@ -142,17 +148,27 @@ export default function App() {
       (session.user.user_metadata?.name as string | undefined) ||
       email.split("@")[0] ||
       "Coordinator";
-    void Promise.resolve(
-      client.from("prov_coordinator_requests").upsert(
-        {
-          auth_user_id: session.user.id,
-          email,
-          fullname: rawName,
-          status: "pending",
-        },
-        { onConflict: "auth_user_id" },
-      ),
-    ).catch(() => {});
+
+    void (async () => {
+      try {
+        const { data: existing } = await client
+          .from("prov_coordinator_requests")
+          .select("id")
+          .eq("auth_user_id", session.user.id)
+          .maybeSingle();
+
+        if (!existing) {
+          await client.from("prov_coordinator_requests").insert({
+            auth_user_id: session.user.id,
+            email,
+            fullname: rawName,
+            status: "pending",
+          });
+        }
+      } catch (e) {
+        console.warn("Could not register coordinator request:", e);
+      }
+    })();
   }, [session, profile]);
 
   const reloadProfile = useCallback(async () => {
