@@ -122,6 +122,22 @@ export function LoginPage({
   const [statusFeedback, setStatusFeedback] = useState("");
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash.replace(/^#/, "");
+    const hashParams = new URLSearchParams(hash);
+    const searchParams = new URLSearchParams(window.location.search);
+    const oauthError =
+      hashParams.get("error_description") ||
+      searchParams.get("error_description") ||
+      hashParams.get("error") ||
+      searchParams.get("error");
+    if (oauthError) {
+      setError(decodeURIComponent(oauthError.replace(/\+/g, " ")));
+      window.history.replaceState(null, "", "/login");
+    }
+  }, []);
+
+  useEffect(() => {
     if (!profile) return;
     const timer = window.setTimeout(() => navigate("/"), 1400);
     return () => window.clearTimeout(timer);
