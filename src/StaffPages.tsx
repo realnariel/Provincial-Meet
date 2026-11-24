@@ -638,6 +638,8 @@ export function ManagePage({
         coordinators={coordinators}
         loadError={error}
         reload={async () => setCoordinators(await loadCoordinators())}
+        events={data.events}
+        refreshEvents={refresh}
       />
     );
   }
@@ -863,13 +865,19 @@ function CoordinatorAdmin({
   coordinators,
   loadError,
   reload,
+  events = [],
+  refreshEvents,
 }: {
   coordinators: Coordinator[];
   loadError: string;
   reload: () => Promise<void>;
+  events?: MeetEvent[];
+  refreshEvents?: () => Promise<void>;
 }) {
   const [requests, setRequests] = useState<CoordinatorRequest[]>([]);
   const [selectedRoles, setSelectedRoles] = useState<Record<string, "coordinator" | "admin">>({});
+  const [selectedSports, setSelectedSports] = useState<Record<string, string>>({});
+  const [selectedDivisions, setSelectedDivisions] = useState<Record<string, string>>({});
   const [username, setUsername] = useState("");
   const [fullname, setFullname] = useState("");
   const [email, setEmail] = useState("");
@@ -886,6 +894,41 @@ function CoordinatorAdmin({
   const [resetPassword, setResetPassword] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const editRef = useRef<HTMLDivElement>(null);
+
+  const sportsList = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of events) {
+      const name = e.sport_name?.trim();
+      if (name) set.add(name);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [events]);
+
+  const divisionsList = useMemo(() => {
+    const set = new Set<string>();
+    for (const d of DIVISIONS) set.add(d);
+    for (const e of events) {
+      if (e.division?.trim()) set.add(e.division.trim());
+    }
+    return ["All Divisions", ...Array.from(set)];
+  }, [events]);
+
+  function getMatchingEvents(reqUserId: string) {
+    const sport = selectedSports[reqUserId] || "";
+    const division = selectedDivisions[reqUserId] || "All Divisions";
+    if (!sport || sport === "None") return [];
+    return events.filter((e) => {
+      const matchSport =
+        sport === "All Sports" ||
+        (Boolean(e.sport_name) &&
+          e.sport_name!.trim().toLowerCase() === sport.trim().toLowerCase());
+      const matchDiv =
+        division === "All Divisions" ||
+        (Boolean(e.division) &&
+          e.division!.trim().toLowerCase() === division.trim().toLowerCase());
+      return matchSport && matchDiv;
+    });
+  }
 
   async function loadPending() {
     const list = await loadCoordinatorRequests();
@@ -937,11 +980,16 @@ function CoordinatorAdmin({
     setError("");
     setNotice("");
     try {
+      const selectedSport = selectedSports[req.auth_user_id] || "";
+      const selectedDivision = selectedDivisions[req.auth_user_id] || "All Divisions";
+      const matchingEvents = getMatchingEvents(req.auth_user_id);
+
       let approved = false;
+      let newCoordId: number | null = null;
 
       // 1. If numeric request ID, attempt database RPC first
       if (typeof req.id === "number" && req.id > 0) {
-        const { error: rpcError } = await requireSupabase().rpc(
+        const { data: rpcData, error: rpcError } = await requireSupabase().rpc(
           "prov_approve_coordinator_request",
           {
             p_request_id: req.id,
@@ -950,6 +998,9 @@ function CoordinatorAdmin({
         );
         if (!rpcError) {
           approved = true;
+          if (rpcData && typeof rpcData === "object" && "coordinator_id" in rpcData) {
+            newCoordId = Number((rpcData as { coordinator_id: unknown }).coordinator_id);
+          }
         }
       }
 
@@ -974,7 +1025,10 @@ function CoordinatorAdmin({
               .from("prov_coordinators")
               .update({ is_admin: makeAdmin, email, fullname: req.fullname })
               .eq("id", existingCoord.id);
-            if (!updErr) approved = true;
+            if (!updErr) {
+              approved = true;
+              newCoordId = existingCoord.id;
+            }
           } else {
             // Find unique username
             let candidate = baseUsername;
@@ -990,16 +1044,23 @@ function CoordinatorAdmin({
               candidate = `${baseUsername}${counter}`;
             }
 
-            const { error: insErr } = await supabase.from("prov_coordinators").insert({
-              username: candidate,
-              fullname: req.fullname || email.split("@")[0] || "Coordinator",
-              email: email || null,
-              is_admin: makeAdmin,
-              auth_user_id: req.auth_user_id,
-              passwordhash: "",
-              must_change_password: false,
-            });
-            if (!insErr) approved = true;
+            const { data: insCoord, error: insErr } = await supabase
+              .from("prov_coordinators")
+              .insert({
+                username: candidate,
+                fullname: req.fullname || email.split("@")[0] || "Coordinator",
+                email: email || null,
+                is_admin: makeAdmin,
+                auth_user_id: req.auth_user_id,
+                passwordhash: "",
+                must_change_password: false,
+              })
+              .select("id")
+              .maybeSingle();
+            if (!insErr) {
+              approved = true;
+              if (insCoord?.id) newCoordId = insCoord.id;
+            }
           }
 
           if (approved) {
@@ -1024,13 +1085,93 @@ function CoordinatorAdmin({
             fullname: req.fullname,
             isAdmin: makeAdmin,
           },
-          `Approved ${req.fullname} (${req.email}) as ${makeAdmin ? "Administrator" : "Coordinator"}!`,
+          "",
         );
         if (!success) return;
-      } else {
-        await Promise.all([reload(), loadPending()]);
+        approved = true;
+      }
+
+      // 4. Retrieve coordinator ID if not yet resolved
+      if (!newCoordId && supabase) {
+        const { data: foundCoord } = await supabase
+          .from("prov_coordinators")
+          .select("id")
+          .eq("auth_user_id", req.auth_user_id)
+          .maybeSingle();
+        if (foundCoord?.id) {
+          newCoordId = foundCoord.id;
+        } else if (req.email) {
+          const { data: foundByEmail } = await supabase
+            .from("prov_coordinators")
+            .select("id")
+            .eq("email", req.email.trim())
+            .maybeSingle();
+          if (foundByEmail?.id) newCoordId = foundByEmail.id;
+        }
+      }
+
+      // 5. Automatically assign matching events if coordinator id is available and events match
+      let assignedCount = 0;
+      if (newCoordId && matchingEvents.length > 0) {
+        const assignmentBatch = matchingEvents.map((e) => ({
+          event_id: e.id,
+          coordinator_id: newCoordId,
+        }));
+
+        try {
+          const { data: assignRes, error: rpcAssignErr } = await requireSupabase().rpc(
+            "prov_set_event_assignments",
+            { p_assignments: assignmentBatch },
+          );
+          if (rpcAssignErr) {
+            console.warn("RPC assign error, attempting direct update fallback:", rpcAssignErr);
+            const { error: dirErr } = await requireSupabase()
+              .from("prov_events")
+              .update({ coordinatorid: newCoordId })
+              .in("id", matchingEvents.map((e) => e.id));
+            if (!dirErr) {
+              assignedCount = matchingEvents.length;
+            }
+          } else {
+            assignedCount = typeof assignRes === "number" ? assignRes : matchingEvents.length;
+          }
+        } catch (assignError) {
+          console.error("Auto assignment failed:", assignError);
+        }
+      }
+
+      // 6. Clean up local selection state for this user
+      setSelectedRoles((prev) => {
+        const next = { ...prev };
+        delete next[req.auth_user_id];
+        return next;
+      });
+      setSelectedSports((prev) => {
+        const next = { ...prev };
+        delete next[req.auth_user_id];
+        return next;
+      });
+      setSelectedDivisions((prev) => {
+        const next = { ...prev };
+        delete next[req.auth_user_id];
+        return next;
+      });
+
+      // 7. Reload coordinators, requests, and events
+      await Promise.all([
+        reload(),
+        loadPending(),
+        refreshEvents ? refreshEvents() : Promise.resolve(),
+      ]);
+
+      const roleLabel = makeAdmin ? "Administrator" : "Coordinator";
+      if (assignedCount > 0) {
         setNotice(
-          `Approved ${req.fullname} (${req.email}) as ${makeAdmin ? "Administrator" : "Coordinator"}! They can now sign in with Google.`,
+          `Approved ${req.fullname} (${req.email}) as ${roleLabel} and automatically assigned to ${assignedCount} event(s) for ${selectedSport} (${selectedDivision})!`,
+        );
+      } else {
+        setNotice(
+          `Approved ${req.fullname} (${req.email}) as ${roleLabel}! They can now sign in with Google.`,
         );
       }
     } catch (cause) {
@@ -1198,18 +1339,23 @@ function CoordinatorAdmin({
             </div>
           </div>
           <div className="staff-table-card">
-            <table className="staff-responsive-table">
+            <table className="staff-responsive-table pending-admin-table">
               <thead>
                 <tr>
                   <th>Full Name</th>
                   <th>Google Email</th>
                   <th>Role to Assign</th>
+                  <th>Sport to Assign</th>
+                  <th>Division</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {requests.map((req) => {
                   const assignedRole = selectedRoles[req.auth_user_id] ?? "coordinator";
+                  const assignedSport = selectedSports[req.auth_user_id] ?? "";
+                  const assignedDivision = selectedDivisions[req.auth_user_id] ?? "All Divisions";
+                  const matchingEvents = getMatchingEvents(req.auth_user_id);
                   return (
                     <tr key={req.id || req.auth_user_id}>
                       <td data-label="Full Name"><strong>{req.fullname}</strong></td>
@@ -1236,6 +1382,59 @@ function CoordinatorAdmin({
                           <option value="admin">Administrator</option>
                         </select>
                       </td>
+                      <td data-label="Sport to Assign">
+                        <select
+                          className="pending-sport-select"
+                          value={assignedSport}
+                          disabled={busy}
+                          onChange={(e) =>
+                            setSelectedSports((prev) => ({
+                              ...prev,
+                              [req.auth_user_id]: e.target.value,
+                            }))
+                          }
+                          aria-label={`Assign sport for ${req.fullname}`}
+                        >
+                          <option value="">— Select Sport —</option>
+                          <option value="All Sports">All Sports (Entire Meet)</option>
+                          {sportsList.map((sport) => (
+                            <option key={sport} value={sport}>
+                              {sport}
+                            </option>
+                          ))}
+                        </select>
+                        {assignedSport ? (
+                          <div className="pending-match-container">
+                            <span
+                              className={matchingEvents.length > 0 ? "event-match-badge" : "event-match-badge zero"}
+                              title={`${matchingEvents.length} event(s) match ${assignedSport} (${assignedDivision})`}
+                            >
+                              <i className={matchingEvents.length > 0 ? "bi bi-check2-circle" : "bi bi-info-circle"} />
+                              {matchingEvents.length} event{matchingEvents.length === 1 ? "" : "s"} match
+                            </span>
+                          </div>
+                        ) : null}
+                      </td>
+                      <td data-label="Division">
+                        <select
+                          className="pending-division-select"
+                          value={assignedDivision}
+                          disabled={busy}
+                          onChange={(e) =>
+                            setSelectedDivisions((prev) => ({
+                              ...prev,
+                              [req.auth_user_id]: e.target.value,
+                            }))
+                          }
+                          aria-label={`Assign division for ${req.fullname}`}
+                        >
+                          {divisionsList.map((div) => (
+                            <option key={div} value={div}>
+                              {div}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
                       <td data-label="Actions">
                         <div className="staff-actions">
                           <button
@@ -1243,7 +1442,7 @@ function CoordinatorAdmin({
                             className="approve-action-btn"
                             disabled={busy}
                             onClick={() => void approveRequest(req, assignedRole === "admin")}
-                            title={`Approve as ${assignedRole === "admin" ? "Administrator" : "Coordinator"}`}
+                            title={`Approve as ${assignedRole === "admin" ? "Administrator" : "Coordinator"}${matchingEvents.length > 0 ? ` and automatically assign to ${matchingEvents.length} event(s)` : ""}`}
                           >
                             <i className="bi bi-check-circle-fill" /> Approve
                           </button>

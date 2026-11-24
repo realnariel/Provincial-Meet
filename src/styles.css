@@ -1803,8 +1803,12 @@ textarea:focus-visible {
   color: #b45309 !important;
   box-shadow: 0 0 0 4px #fde68a;
 }
-.pending-role-select {
-  padding: 0.35rem 0.65rem;
+.pending-role-select,
+.pending-sport-select,
+.pending-division-select {
+  width: 100%;
+  max-width: 100%;
+  padding: 0.35rem 0.6rem;
   font-size: 0.82rem;
   font-weight: 600;
   border-radius: 6px;
@@ -1812,13 +1816,38 @@ textarea:focus-visible {
   background: #f8fafc;
   color: #1e293b;
   cursor: pointer;
-  min-height: auto;
+  min-height: 38px;
+  box-sizing: border-box;
   transition: all 0.15s ease;
 }
-.pending-role-select:focus {
+.pending-role-select:focus,
+.pending-sport-select:focus,
+.pending-division-select:focus {
   border-color: #123f2d;
   background: #ffffff;
   outline: none;
+  box-shadow: 0 0 0 2px rgba(18, 63, 45, 0.12);
+}
+.pending-match-container {
+  margin-top: 0.35rem;
+}
+.event-match-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  background: #e6f4ea;
+  color: #137333;
+  border: 1px solid #a8dab5;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.event-match-badge.zero {
+  background: #f1f3f4;
+  color: #5f6368;
+  border-color: #dadce0;
 }
 .email-badge {
   display: inline-flex;
@@ -2106,6 +2135,12 @@ textarea:focus-visible {
 .coordinator-admin-table th:nth-child(5),
 .coordinator-admin-table th:last-child { width: 12%; text-align: center; }
 .coordinator-admin-table td:nth-child(4) { text-align: center; }
+.pending-admin-table th:nth-child(1) { width: 16%; }
+.pending-admin-table th:nth-child(2) { width: 22%; }
+.pending-admin-table th:nth-child(3) { width: 13%; }
+.pending-admin-table th:nth-child(4) { width: 18%; }
+.pending-admin-table th:nth-child(5) { width: 15%; }
+.pending-admin-table th:nth-child(6) { width: 16%; text-align: center; }
 .staff-badge-stack {
   display: flex;
   align-items: flex-start;
@@ -2504,6 +2539,16 @@ textarea:focus-visible {
   }
   .staff-status { color: #f5d878; }
   .staff-status.completed { color: #8ee2ab; }
+  .staff-responsive-table .event-match-badge {
+    background: #f2d575;
+    color: #123f2d;
+    border-color: #dfbf57;
+  }
+  .staff-responsive-table .event-match-badge.zero {
+    background: rgba(255, 255, 255, 0.18);
+    color: #f1e2b5;
+    border-color: rgba(255, 255, 255, 0.25);
+  }
   .staff-responsive-table select {
     border-color: #ffffff4a;
     background: #fff;
