@@ -1134,31 +1134,60 @@ export function TeamsPage({
         </div>
         <DivisionTabs value={division} change={setDivision} />
         <div className="teams-grid">
-          {standings.map((row, index) => (
-            <button
-              className="team-card school-card"
-              key={row.team.id}
-              onClick={() => navigate(`/teams/${row.team.id}`)}
-            >
-              <span className="card-left-content">
-                <strong className="team-acronym">{row.team.acronym}</strong>
-                <span className="team-division">{division}</span>
-                <span className="area-rank">
-                  Rank #
-                  {standings.findIndex(
-                    (candidate) => compareMedals(candidate, row) === 0,
-                  ) + 1 || index + 1}
-                </span>
-                <MedalPill row={row} />
-              </span>
-              <img
-                src="/images/bohol_logo.png"
-                alt=""
-                aria-hidden="true"
-                className="area-card-logo"
-              />
-            </button>
-          ))}
+          {standings.map((row, index) => {
+            const rank =
+              standings.findIndex(
+                (candidate) => compareMedals(candidate, row) === 0,
+              ) + 1 || index + 1;
+            const totalMedals = row.gold + row.silver + row.bronze;
+            return (
+              <button
+                className="team-card school-card"
+                key={row.team.id}
+                onClick={() => navigate(`/teams/${row.team.id}`)}
+              >
+                <div className="team-card-top">
+                  <span className="team-division-tag">
+                    <i className="bi bi-shield-shaded" /> {division}
+                  </span>
+                  <span className="team-rank-pill">
+                    <i className="bi bi-trophy-fill" /> Rank #{rank}
+                  </span>
+                </div>
+                <div className="team-card-identity">
+                  <strong className="team-acronym">{row.team.acronym}</strong>
+                  <span className="team-fullname" title={row.team.name}>
+                    {row.team.name}
+                  </span>
+                </div>
+                <div className="team-medal-cluster">
+                  <div className="medal-chip gold" title={`${row.gold} Gold`}>
+                    <span className="chip-icon">🥇</span>
+                    <span className="chip-val">{row.gold}</span>
+                    <span className="chip-lbl">Gold</span>
+                  </div>
+                  <div className="medal-chip silver" title={`${row.silver} Silver`}>
+                    <span className="chip-icon">🥈</span>
+                    <span className="chip-val">{row.silver}</span>
+                    <span className="chip-lbl">Silver</span>
+                  </div>
+                  <div className="medal-chip bronze" title={`${row.bronze} Bronze`}>
+                    <span className="chip-icon">🥉</span>
+                    <span className="chip-val">{row.bronze}</span>
+                    <span className="chip-lbl">Bronze</span>
+                  </div>
+                </div>
+                <div className="team-card-footer">
+                  <span className="team-total-badge">
+                    Total: <strong>{totalMedals}</strong> medal{totalMedals === 1 ? "" : "s"}
+                  </span>
+                  <span className="team-explore-link">
+                    View Results <i className="bi bi-arrow-right" />
+                  </span>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </section>
     );
@@ -1171,9 +1200,17 @@ export function TeamsPage({
         ? event.division !== "Paragames"
         : event.division === division),
   );
-  const row = medalRows(data, division).find(
-    (item) => item.team.id === team.id,
+  const standings = medalRows(data, division);
+  const row = standings.find((item) => item.team.id === team.id);
+  const rankIndex = standings.findIndex(
+    (item) => compareMedals(item, row ?? { team, gold: 0, silver: 0, bronze: 0 }) === 0,
   );
+  const rank = rankIndex >= 0 ? rankIndex + 1 : 1;
+  const goldCount = row?.gold ?? 0;
+  const silverCount = row?.silver ?? 0;
+  const bronzeCount = row?.bronze ?? 0;
+  const totalCount = goldCount + silverCount + bronzeCount;
+
   return (
     <section className="panel team-detail">
       <button
@@ -1183,13 +1220,36 @@ export function TeamsPage({
         ← All teams
       </button>
       <header className="team-detail-hero">
-        <div>
+        <div className="team-hero-info">
           <span className="eyebrow">Provincial delegation</span>
           <h1>{team.acronym}</h1>
           <p>{team.name}</p>
-          <MedalPill row={row ?? { gold: 0, silver: 0, bronze: 0 }} />
+          <span className="hero-rank-pill">
+            <i className="bi bi-trophy-fill" /> Rank #{rank} in {division}
+          </span>
         </div>
-        <img src="/images/bohol_logo.png" alt="" aria-hidden="true" />
+        <div className="hero-medal-summary">
+          <div className="hero-medal-card gold" title={`${goldCount} Gold Medals`}>
+            <span className="hero-medal-icon">🥇</span>
+            <span className="hero-medal-val">{goldCount}</span>
+            <span className="hero-medal-lbl">Gold</span>
+          </div>
+          <div className="hero-medal-card silver" title={`${silverCount} Silver Medals`}>
+            <span className="hero-medal-icon">🥈</span>
+            <span className="hero-medal-val">{silverCount}</span>
+            <span className="hero-medal-lbl">Silver</span>
+          </div>
+          <div className="hero-medal-card bronze" title={`${bronzeCount} Bronze Medals`}>
+            <span className="hero-medal-icon">🥉</span>
+            <span className="hero-medal-val">{bronzeCount}</span>
+            <span className="hero-medal-lbl">Bronze</span>
+          </div>
+          <div className="hero-medal-card total" title={`${totalCount} Total Medals`}>
+            <span className="hero-medal-icon">🏅</span>
+            <span className="hero-medal-val">{totalCount}</span>
+            <span className="hero-medal-lbl">Total</span>
+          </div>
+        </div>
       </header>
       <DivisionTabs value={division} change={setDivision} />
       <h2 className="section-title">🏅 &nbsp; Results</h2>

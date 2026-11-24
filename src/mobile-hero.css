@@ -397,7 +397,7 @@
     grid-template-columns: 1fr;
   }
   .teams-grid .school-card {
-    min-height: 150px;
+    min-height: auto;
   }
   .division-filters {
     gap: 0.3rem;
