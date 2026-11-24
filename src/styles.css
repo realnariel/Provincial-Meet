@@ -1354,7 +1354,6 @@ textarea:focus-visible {
   background: #fff;
   color: #17202a;
   border: 1px solid #d9e3dc;
-  border-top: 4px solid var(--gold);
   border-radius: 10px;
   padding: 1.2rem;
   display: flex;

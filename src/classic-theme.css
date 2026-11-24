@@ -1300,30 +1300,37 @@ h4 {
 .teams-page .teams-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: stretch;
-  gap: 1.25rem;
+  gap: 1.35rem;
 }
 .teams-grid .school-card {
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-top: 4px solid var(--cc-gold, #c8a354);
-  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   text-align: left;
   min-height: 230px;
-  padding: 1.25rem 1.35rem !important;
+  padding: 1.35rem 1.45rem !important;
   width: 100%;
   box-sizing: border-box;
   overflow: hidden;
   cursor: pointer;
-  background: linear-gradient(135deg, #134230, #0a2d20 65%, #185038);
-  box-shadow: 0 6px 18px rgba(18, 63, 45, 0.25);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  background: linear-gradient(155deg, #184c37 0%, #0e3526 50%, #08241a 100%);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    0 10px 24px -2px rgba(0, 0, 0, 0.5),
+    inset 0 1px 1px rgba(255, 255, 255, 0.22),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+  transition: transform 0.22s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.22s cubic-bezier(0.2, 0, 0, 1), border-color 0.2s ease;
 }
 .teams-grid .school-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--cc-gold, #c8a354);
-  border-color: var(--cc-gold, #c8a354);
+  transform: translateY(-6px);
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.35),
+    0 20px 38px -4px rgba(0, 0, 0, 0.65),
+    inset 0 1px 2px rgba(255, 255, 255, 0.32),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.45);
+  border-color: rgba(200, 163, 84, 0.35);
 }
 .team-card-top {
   display: flex;
@@ -1342,10 +1349,11 @@ h4 {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: #e2f0e8;
-  background: rgba(255, 255, 255, 0.12);
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05));
   padding: 0.28rem 0.65rem;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.15);
 }
 .team-rank-pill {
   display: inline-flex;
@@ -1354,11 +1362,11 @@ h4 {
   font-size: 0.74rem;
   font-weight: 800;
   color: #f7e6a2;
-  background: rgba(0, 0, 0, 0.4);
+  background: linear-gradient(140deg, rgba(35, 25, 8, 0.75), rgba(15, 10, 3, 0.9));
   padding: 0.28rem 0.7rem;
   border-radius: 999px;
-  border: 1px solid rgba(200, 163, 84, 0.55);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(200, 163, 84, 0.35);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(247, 230, 162, 0.25);
   white-space: nowrap;
 }
 .team-card-identity {
@@ -1389,7 +1397,7 @@ h4 {
 .team-medal-cluster {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.55rem;
+  gap: 0.6rem;
   margin-bottom: 0.95rem;
   width: 100%;
 }
@@ -1398,16 +1406,22 @@ h4 {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0.45rem 0.25rem;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
+  padding: 0.55rem 0.35rem;
+  background: linear-gradient(165deg, rgba(6, 26, 18, 0.65), rgba(2, 12, 8, 0.82));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
   text-align: center;
-  transition: all 0.15s ease;
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    0 1px 1px rgba(255, 255, 255, 0.08);
+  transition: all 0.18s ease;
 }
 .medal-chip:hover {
-  background: rgba(0, 0, 0, 0.45);
-  border-color: rgba(255, 255, 255, 0.25);
+  background: linear-gradient(165deg, rgba(10, 36, 25, 0.8), rgba(3, 16, 11, 0.95));
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.6),
+    0 1px 2px rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 .medal-chip .chip-icon {
   font-size: 0.95rem;
@@ -1442,7 +1456,7 @@ h4 {
   justify-content: space-between;
   gap: 0.5rem;
   padding-top: 0.75rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
   width: 100%;
 }
 .team-total-badge {
@@ -1487,23 +1501,28 @@ h4 {
 
 .team-detail-hero {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
-  gap: 1.75rem;
-  padding: 1.75rem 2rem;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #123f2d, #0b2e21 55%, #185239);
-  border: 2px solid var(--cc-gold, #c8a354);
+  gap: clamp(1.75rem, 4vw, 3.5rem);
+  padding: 1.85rem 2.25rem;
+  border-radius: 18px;
+  background: linear-gradient(150deg, #184c37 0%, #0f3727 48%, #082419 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   color: #fff;
   margin-bottom: 1.5rem;
-  box-shadow: 0 8px 24px rgba(18, 63, 45, 0.3);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.4),
+    0 14px 32px -3px rgba(0, 0, 0, 0.55),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -2px 4px 0 rgba(0, 0, 0, 0.4);
 }
 .team-hero-info {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  flex: 1 1 55%;
-  min-width: 0;
+  flex: 0 1 auto;
+  min-width: 260px;
+  max-width: 460px;
 }
 .team-hero-info .eyebrow {
   color: #f7e6a2;
@@ -1534,43 +1553,41 @@ h4 {
   font-size: 0.82rem;
   font-weight: 800;
   color: #f7e6a2;
-  background: rgba(0, 0, 0, 0.4);
+  background: linear-gradient(140deg, rgba(35, 25, 8, 0.75), rgba(15, 10, 3, 0.9));
   padding: 0.35rem 0.8rem;
   border-radius: 999px;
-  border: 1px solid rgba(200, 163, 84, 0.6);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(200, 163, 84, 0.35);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(247, 230, 162, 0.25);
 }
 .hero-medal-summary {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 0.65rem;
+  gap: 0.75rem;
   flex: 0 0 auto;
-  min-width: 340px;
 }
 .hero-medal-card {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0.85rem 0.65rem;
-  background: rgba(0, 0, 0, 0.32);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 0.95rem 1.15rem;
+  background: linear-gradient(165deg, rgba(6, 26, 18, 0.7), rgba(2, 12, 8, 0.88));
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   text-align: center;
-  min-width: 72px;
+  min-width: 82px;
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.14),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.5);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
-.hero-medal-card.gold {
-  border-top: 3px solid #f7e6a2;
-}
-.hero-medal-card.silver {
-  border-top: 3px solid #e2e8f0;
-}
-.hero-medal-card.bronze {
-  border-top: 3px solid #fabd8b;
-}
-.hero-medal-card.total {
-  border-top: 3px solid #52c480;
-  background: rgba(0, 0, 0, 0.45);
+.hero-medal-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.5),
+    inset 0 1px 1px rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 .hero-medal-icon {
   font-size: 1.25rem;
@@ -1608,26 +1625,35 @@ h4 {
     flex-direction: column;
     align-items: stretch;
     gap: 1.25rem;
-    padding: 1.25rem;
+    padding: 1.35rem;
+  }
+  .team-hero-info {
+    max-width: 100%;
   }
   .hero-medal-summary {
     min-width: 0;
     width: 100%;
     grid-template-columns: repeat(4, 1fr);
-    gap: 0.4rem;
+    gap: 0.45rem;
   }
   .hero-medal-card {
-    padding: 0.65rem 0.3rem;
+    padding: 0.75rem 0.35rem;
     min-width: 0;
   }
   .hero-medal-icon {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
   }
   .hero-medal-val {
-    font-size: 1.2rem;
+    font-size: 1.25rem;
   }
   .hero-medal-lbl {
     font-size: 0.6rem;
+  }
+}
+@media (max-width: 420px) {
+  .hero-medal-summary {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
   }
 }
 @media (max-width: 420px) {
