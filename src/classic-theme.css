@@ -1501,9 +1501,9 @@ h4 {
 
 .team-detail-hero {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
-  gap: clamp(1.75rem, 4vw, 3.5rem);
+  gap: clamp(1.5rem, 3.5vw, 3rem);
   padding: 1.85rem 2.25rem;
   border-radius: 18px;
   background: linear-gradient(150deg, #184c37 0%, #0f3727 48%, #082419 100%);
@@ -1520,9 +1520,9 @@ h4 {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  flex: 0 1 auto;
-  min-width: 260px;
-  max-width: 460px;
+  flex: 1 1 320px;
+  min-width: 240px;
+  max-width: 480px;
 }
 .team-hero-info .eyebrow {
   color: #f7e6a2;
@@ -1561,26 +1561,30 @@ h4 {
 }
 .hero-medal-summary {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.75rem;
-  flex: 0 0 auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+  flex: 1 1 480px;
+  max-width: 600px;
+  width: 100%;
 }
 .hero-medal-card {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0.95rem 1.15rem;
-  background: linear-gradient(165deg, rgba(6, 26, 18, 0.7), rgba(2, 12, 8, 0.88));
+  padding: 1.15rem 0.65rem;
+  background: linear-gradient(165deg, rgba(6, 26, 18, 0.72), rgba(2, 12, 8, 0.9));
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  border-radius: 14px;
   text-align: center;
-  min-width: 82px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   box-shadow:
     0 4px 10px rgba(0, 0, 0, 0.35),
-    inset 0 1px 1px rgba(255, 255, 255, 0.14),
+    inset 0 1px 1px rgba(255, 255, 255, 0.16),
     inset 0 -1px 2px rgba(0, 0, 0, 0.5);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 .hero-medal-card:hover {
   transform: translateY(-3px);
@@ -1590,12 +1594,12 @@ h4 {
   border-color: rgba(255, 255, 255, 0.2);
 }
 .hero-medal-icon {
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   line-height: 1;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.35rem;
 }
 .hero-medal-val {
-  font-size: 1.45rem;
+  font-size: 1.65rem;
   font-weight: 900;
   line-height: 1;
   color: #ffffff;
@@ -1613,12 +1617,12 @@ h4 {
   color: #8be5af;
 }
 .hero-medal-lbl {
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   color: #a4bbb0;
-  margin-top: 0.3rem;
+  margin-top: 0.35rem;
 }
 @media (max-width: 768px) {
   .team-detail-hero {
@@ -1633,6 +1637,7 @@ h4 {
   .hero-medal-summary {
     min-width: 0;
     width: 100%;
+    max-width: 100%;
     grid-template-columns: repeat(4, 1fr);
     gap: 0.45rem;
   }
@@ -1648,12 +1653,6 @@ h4 {
   }
   .hero-medal-lbl {
     font-size: 0.6rem;
-  }
-}
-@media (max-width: 420px) {
-  .hero-medal-summary {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.5rem;
   }
 }
 @media (max-width: 420px) {
