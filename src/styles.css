@@ -1999,10 +1999,13 @@ textarea:focus-visible {
 .event-admin-table th:nth-child(2) { width: 37%; }
 .event-admin-table th:nth-child(3) { width: 29%; }
 .event-admin-table th:last-child { width: 16%; text-align: center; }
-.coordinator-admin-table th:nth-child(1) { width: 31%; }
-.coordinator-admin-table th:nth-child(2) { width: 23%; }
-.coordinator-admin-table th:nth-child(3) { width: 25%; }
-.coordinator-admin-table th:last-child { width: 21%; text-align: center; }
+.coordinator-admin-table th:nth-child(1) { width: 22%; }
+.coordinator-admin-table th:nth-child(2) { width: 32%; }
+.coordinator-admin-table th:nth-child(3) { width: 18%; }
+.coordinator-admin-table th:nth-child(4) { width: 16%; text-align: center; }
+.coordinator-admin-table th:nth-child(5),
+.coordinator-admin-table th:last-child { width: 12%; text-align: center; }
+.coordinator-admin-table td:nth-child(4) { text-align: center; }
 .staff-badge-stack {
   display: flex;
   align-items: flex-start;
@@ -2015,12 +2018,13 @@ textarea:focus-visible {
 .staff-status {
   display: inline-flex;
   width: fit-content;
-  padding: 0.25rem 0.55rem;
+  white-space: nowrap;
+  padding: 0.28rem 0.65rem;
   border-radius: 999px;
   background: #e4eee6;
   color: #155335;
-  font-size: 0.68rem;
-  font-weight: 900;
+  font-size: 0.7rem;
+  font-weight: 800;
   line-height: 1.2;
   text-transform: uppercase;
 }
@@ -2264,7 +2268,7 @@ textarea:focus-visible {
 }
 @media (max-width: 760px) {
   .staff-admin-page {
-    padding: 0.4rem 0.15rem 1rem;
+    padding: 0.4rem 0.15rem 6.5rem;
     overflow: visible;
     background: transparent;
     border: 0;
@@ -2376,6 +2380,13 @@ textarea:focus-visible {
   .staff-event-title,
   .coordinator-admin-table td strong {
     color: #fff;
+  }
+  .staff-responsive-table .email-cell {
+    color: #e6f4ea;
+    font-weight: 500;
+  }
+  .staff-responsive-table .muted-dash {
+    color: #a7c1b5;
   }
   .staff-event-title + small {
     color: #d7e0da;
