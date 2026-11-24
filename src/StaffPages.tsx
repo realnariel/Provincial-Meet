@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import type { Session } from "@supabase/supabase-js";
 import type { AppData } from "./App";
 import {
   bulkAddQualifiers,
@@ -73,22 +74,69 @@ function signInError(error: {
   return `Sign-in failed: ${error.message}`;
 }
 
+function GoogleIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="#4285F4"
+        d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.15z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.24v3.15C3.26 21.4 7.34 24 12 24z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.24C.45 8.16 0 9.98 0 12c0 2.02.45 3.84 1.24 5.42l4.04-3.15z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.6 1.24 6.58l4.04 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+      />
+    </svg>
+  );
+}
+
 export function LoginPage({
   profile,
+  session,
   navigate,
+  onSignOut,
 }: {
   profile: Coordinator | null;
+  session?: Session | null;
   navigate: Nav;
+  onSignOut?: () => void;
 }) {
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
   useEffect(() => {
     if (!profile) return;
     const timer = window.setTimeout(() => navigate("/"), 1400);
     return () => window.clearTimeout(timer);
   }, [profile, navigate]);
+
+  async function handleGoogleAuth() {
+    setBusy(true);
+    setError("");
+    try {
+      const { error: oauthError } = await requireSupabase().auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/login`,
+        },
+      });
+      if (oauthError) throw oauthError;
+    } catch (cause) {
+      setError(message(cause));
+      setBusy(false);
+    }
+  }
+
   async function signIn(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
@@ -107,6 +155,7 @@ export function LoginPage({
       setBusy(false);
     }
   }
+
   if (profile)
     return (
       <section className="panel auth-card">
@@ -116,38 +165,179 @@ export function LoginPage({
         </div>
       </section>
     );
+
+  if (session?.user && !profile)
+    return (
+      <section className="panel auth-card">
+        <span className="eyebrow dark">Account Verification</span>
+        <h1>Google Account Connected</h1>
+        <div className="auth-user-badge">
+          <i className="bi bi-person-check-fill" aria-hidden="true" />
+          <span>{session.user.email}</span>
+        </div>
+        <div className="alert warning" role="status">
+          <div>
+            <strong>Coordinator access required</strong>
+            <p style={{ margin: "0.35rem 0 0", fontSize: "0.86rem", lineHeight: 1.45 }}>
+              This Google account is signed in, but has not yet been linked to an event coordinator profile for Bohol Provincial Meet 2026.
+              Please provide your Google email address to the Meet Administrator to activate your event management access.
+            </p>
+          </div>
+        </div>
+        <div className="auth-action-stack">
+          <button
+            type="button"
+            className="secondary-btn auth-signout-btn"
+            onClick={() => {
+              if (onSignOut) {
+                onSignOut();
+              } else {
+                void requireSupabase().auth.signOut();
+              }
+            }}
+          >
+            <i className="bi bi-box-arrow-right" aria-hidden="true" />
+            <span>Sign out / Switch account</span>
+          </button>
+          <button
+            type="button"
+            className="auth-secondary-btn"
+            onClick={() => navigate("/")}
+          >
+            Return to Public Live Results
+          </button>
+        </div>
+      </section>
+    );
+
   return (
     <section className="panel auth-card">
-      <span className="eyebrow dark">Secure access</span>
-      <h1>Sign in</h1>
-      <p>Sign in using your assigned username, or the email address used to create your account.</p>
+      <div className="auth-tabs" role="tablist" aria-label="Authentication Options">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "signin"}
+          className={`auth-tab ${mode === "signin" ? "active" : ""}`}
+          onClick={() => {
+            setMode("signin");
+            setError("");
+          }}
+        >
+          Sign in
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "signup"}
+          className={`auth-tab ${mode === "signup" ? "active" : ""}`}
+          onClick={() => {
+            setMode("signup");
+            setError("");
+          }}
+        >
+          Sign up
+        </button>
+      </div>
+
+      <span className="eyebrow dark">
+        {mode === "signin" ? "Secure access" : "Coordinator Registration"}
+      </span>
+      <h1>{mode === "signin" ? "Sign in" : "Sign up"}</h1>
+      <p>
+        {mode === "signin"
+          ? "Sign in with your Google account or coordinator credentials to manage events and official scoring."
+          : "Register with your Google account to get authenticated for Bohol Provincial Meet 2026 coordinator access."}
+      </p>
+
       {error && (
         <div className="alert error" role="alert">
           {error}
         </div>
       )}
-      <form onSubmit={signIn} className="form-stack">
-        <label>
-          Username or email
-          <input
-            autoComplete="username"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            required
-          />
-        </label>
-        <label>
-          Password
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-          />
-        </label>
-        <button disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
-      </form>
+
+      <button
+        type="button"
+        className="google-auth-btn"
+        onClick={() => void handleGoogleAuth()}
+        disabled={busy}
+      >
+        <GoogleIcon />
+        <span>
+          {busy
+            ? "Connecting to Google…"
+            : mode === "signin"
+              ? "Sign in with Google"
+              : "Sign up with Google"}
+        </span>
+      </button>
+
+      {mode === "signup" ? (
+        <>
+          <div className="auth-info-box">
+            <i className="bi bi-info-circle-fill" aria-hidden="true" />
+            <div>
+              <strong>How registration works:</strong>
+              <p>
+                Click <strong>Sign up with Google</strong> to authenticate your DepEd or personal Google account. Once signed up, the Meet Administrator will link your account to your designated sport events.
+              </p>
+            </div>
+          </div>
+          <div className="auth-divider">
+            <span>already registered?</span>
+          </div>
+          <button
+            type="button"
+            className="auth-secondary-btn"
+            onClick={() => {
+              setMode("signin");
+              setError("");
+            }}
+          >
+            Sign in with existing credentials
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="auth-divider">
+            <span>or sign in with credentials</span>
+          </div>
+          <form onSubmit={signIn} className="form-stack">
+            <label>
+              Username or email
+              <input
+                autoComplete="username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Password
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+              />
+            </label>
+            <button disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
+          </form>
+          <div className="auth-switch-prompt">
+            Need an account?{" "}
+            <button
+              type="button"
+              className="link-btn"
+              onClick={() => {
+                setMode("signup");
+                setError("");
+              }}
+            >
+              Sign up with Google
+            </button>
+          </div>
+        </>
+      )}
     </section>
   );
 }

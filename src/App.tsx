@@ -302,7 +302,14 @@ export default function App() {
   else if (path === "/teams" || path.startsWith("/teams/"))
     content = <TeamsPage data={data} path={path} navigate={navigate} />;
   else if (path === "/login")
-    content = <LoginPage profile={profile} navigate={navigate} />;
+    content = (
+      <LoginPage
+        profile={profile}
+        session={session}
+        navigate={navigate}
+        onSignOut={signOut}
+      />
+    );
   else if (
     path === "/manage" ||
     path === "/manage/coordinators" ||
