@@ -1,12 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { loadPublicData } from "./data";
 import { isConfigured, supabase } from "./supabase";
 import type { Coordinator, EventAward, MedalRow, MeetEvent, Team } from "./types";
 import { HomePage, RankingsPage, EventsPage, TeamsPage } from "./PublicPages";
-import { LoginPage, ManagePage } from "./StaffPages";
-import { ProvincialReportsPage } from "./ProvincialReportsPage";
-import { DelegationPage, OfficialScoringPage } from "./WorkflowPages";
+
+const ProvincialReportsPage = lazy(() =>
+  import("./ProvincialReportsPage").then((m) => ({
+    default: m.ProvincialReportsPage,
+  })),
+);
+const LoginPage = lazy(() =>
+  import("./StaffPages").then((m) => ({ default: m.LoginPage })),
+);
+const ManagePage = lazy(() =>
+  import("./StaffPages").then((m) => ({ default: m.ManagePage })),
+);
+const OfficialScoringPage = lazy(() =>
+  import("./WorkflowPages").then((m) => ({ default: m.OfficialScoringPage })),
+);
+const DelegationPage = lazy(() =>
+  import("./WorkflowPages").then((m) => ({ default: m.DelegationPage })),
+);
 
 export interface AppData {
   teams: Team[];
@@ -533,7 +548,15 @@ export default function App() {
             {error} <button onClick={() => void refresh()}>Retry</button>
           </div>
         )}
-        {content}
+        <Suspense
+          fallback={
+            <div className="panel state-message" role="status">
+              Loading…
+            </div>
+          }
+        >
+          {content}
+        </Suspense>
       </main>
       <footer className="site-footer">
         © 2026 Anthony Riel C. Diango CpE, LPT
