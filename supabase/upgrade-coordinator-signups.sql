@@ -227,7 +227,10 @@ begin
 
   select auth_user_id into v_auth_user_id from public.prov_coordinators where id = p_id;
 
-  -- Delete coordinator profile (events with this coordinator set coordinatorid to null automatically)
+  -- Set all events assigned to this coordinator back to Unassigned (null)
+  update public.prov_events set coordinatorid = null where coordinatorid = p_id;
+
+  -- Delete coordinator profile
   delete from public.prov_coordinators where id = p_id;
 
   -- Clean up associated request record if one exists

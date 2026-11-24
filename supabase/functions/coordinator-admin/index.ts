@@ -304,10 +304,26 @@ edgeRuntime.serve(async (request) => {
   if (body.action === "delete") {
     if (id === profile.id)
       return json({ error: "You cannot delete your own account" }, 400);
-    const { error: deleteError } = await admin.auth.admin.deleteUser(
-      target.auth_user_id,
-    );
-    if (deleteError) return json({ error: deleteError.message }, 400);
+
+    // Set all events assigned to this coordinator back to Unassigned (null)
+    await admin
+      .from("prov_events")
+      .update({ coordinatorid: null })
+      .eq("coordinatorid", target.id);
+
+    // Delete coordinator record
+    await admin
+      .from("prov_coordinators")
+      .delete()
+      .eq("id", target.id);
+
+    // Delete associated auth user if one exists
+    if (target.auth_user_id) {
+      const { error: deleteError } = await admin.auth.admin.deleteUser(
+        target.auth_user_id,
+      );
+      if (deleteError) return json({ error: deleteError.message }, 400);
+    }
     return json({ ok: true });
   }
   return json({ error: "Unknown action" }, 400);

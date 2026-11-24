@@ -1276,22 +1276,58 @@ function CoordinatorAdmin({
   }
 
   async function deleteCoordinator(item: Coordinator) {
-    if (!window.confirm(`Delete coordinator account @${item.username} (${item.fullname})?`))
+    if (
+      !window.confirm(
+        `Delete coordinator account @${item.username} (${item.fullname})? All events assigned to this coordinator will be set back to Unassigned.`,
+      )
+    )
       return;
     setBusy(true);
     setError("");
     setNotice("");
     try {
-      const success = await request("delete", { id: item.id }, `Coordinator account @${item.username} deleted.`);
+      const db = requireSupabase();
+
+      // 1. Explicitly reset all events assigned to this coordinator to Unassigned (null)
+      try {
+        await db
+          .from("prov_events")
+          .update({ coordinatorid: null })
+          .eq("coordinatorid", item.id);
+      } catch (unassignErr) {
+        console.warn("Pre-delete event unassignment note:", unassignErr);
+      }
+
+      // 2. Perform coordinator deletion via Edge function or RPC
+      const success = await request(
+        "delete",
+        { id: item.id },
+        `Coordinator account @${item.username} deleted. All assigned events are now Unassigned.`,
+      );
       if (!success) {
-        const { error: rpcError } = await requireSupabase().rpc(
+        const { error: rpcError } = await db.rpc(
           "prov_admin_delete_coordinator",
           { p_id: item.id },
         );
         if (rpcError) throw rpcError;
-        await reload();
-        setNotice(`Coordinator @${item.username} removed from directory.`);
+        setNotice(
+          `Coordinator @${item.username} removed from directory. All assigned events are now Unassigned.`,
+        );
       }
+
+      // 3. Guarantee any remaining events are unassigned
+      try {
+        await db
+          .from("prov_events")
+          .update({ coordinatorid: null })
+          .eq("coordinatorid", item.id);
+      } catch {}
+
+      // 4. Reload coordinators and events so the UI updates immediately
+      await Promise.all([
+        reload(),
+        refreshEvents ? refreshEvents() : Promise.resolve(),
+      ]);
     } catch (cause) {
       setError(message(cause));
     } finally {
