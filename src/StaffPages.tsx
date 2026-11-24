@@ -129,11 +129,14 @@ export function LoginPage({
 
   useEffect(() => {
     if (!session?.user || profile) return;
+    const email = session.user.email ?? "";
+    // Synthetic credential accounts (@accounts.provmeet.example.com) are username/password logins, never Google sign-ups!
+    if (!email || email.toLowerCase().endsWith("@accounts.provmeet.example.com")) return;
+
     const flow = sessionStorage.getItem("google_auth_flow");
 
     // If the user clicked "Sign in with Google", but does NOT have a coordinator profile:
     if (flow === "signin") {
-      const email = session.user.email || "this Google account";
       sessionStorage.removeItem("google_auth_flow");
       setError(
         `No coordinator account found for ${email}. Please sign up first to register your account.`,
@@ -151,7 +154,6 @@ export function LoginPage({
     // Otherwise, flow === "signup" (or explicit registration): record pending request
     const db = supabase;
     if (!db) return;
-    const email = session.user.email ?? "";
     const rawName =
       (session.user.user_metadata?.full_name as string | undefined) ||
       (session.user.user_metadata?.name as string | undefined) ||
@@ -252,6 +254,33 @@ export function LoginPage({
     );
 
   if (session?.user && !profile) {
+    const userEmail = session.user.email ?? "";
+    const isSyntheticCredential = userEmail
+      .toLowerCase()
+      .endsWith("@accounts.provmeet.example.com");
+
+    if (isSyntheticCredential) {
+      return (
+        <section className="panel auth-card">
+          <h1>Coordinator Account</h1>
+          <div className="alert warning" role="status">
+            Loading your coordinator profile… If this message persists, please sign out and sign in again.
+          </div>
+          <button
+            type="button"
+            className="secondary-btn auth-signout-btn"
+            onClick={() => {
+              if (onSignOut) onSignOut();
+              else void requireSupabase().auth.signOut();
+            }}
+          >
+            <i className="bi bi-box-arrow-right" aria-hidden="true" />
+            <span>Sign out</span>
+          </button>
+        </section>
+      );
+    }
+
     const rawName =
       (session.user.user_metadata?.full_name as string | undefined) ||
       (session.user.user_metadata?.name as string | undefined) ||

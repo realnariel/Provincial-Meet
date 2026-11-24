@@ -128,12 +128,15 @@ export default function App() {
   // Root-level auto-registration for pending coordinator requests
   useEffect(() => {
     if (!supabase || !session?.user || profile) return;
+    const email = session.user.email ?? "";
+    // Only register real Google users. Never register synthetic username/password accounts!
+    if (!email || email.toLowerCase().endsWith("@accounts.provmeet.example.com")) return;
+
     const flow = sessionStorage.getItem("google_auth_flow");
     // If the user clicked "Sign in with Google", do not auto-register as pending sign-up!
     if (flow === "signin") return;
 
     const client = supabase;
-    const email = session.user.email ?? "";
     const rawName =
       (session.user.user_metadata?.full_name as string | undefined) ||
       (session.user.user_metadata?.name as string | undefined) ||

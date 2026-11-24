@@ -92,6 +92,7 @@ edgeRuntime.serve(async (request) => {
         .from("prov_coordinator_requests")
         .select("*")
         .eq("status", "pending")
+        .not("email", "like", "%@accounts.provmeet.example.com")
         .order("created_at", { ascending: false });
       if (reqs && reqs.length > 0) {
         results.push(...reqs);
@@ -107,6 +108,10 @@ edgeRuntime.serve(async (request) => {
       const { data: authUsers } = await admin.auth.admin.listUsers();
       if (authUsers?.users) {
         for (const u of authUsers.users) {
+          const email = (u.email ?? "").toLowerCase();
+          // Never list internal username/password credential accounts as pending Google signups
+          if (!email || email.endsWith("@accounts.provmeet.example.com")) continue;
+
           if (!existingAuthIds.has(u.id) && !seenAuthIds.has(u.id)) {
             results.push({
               id: `auth_${u.id}`,

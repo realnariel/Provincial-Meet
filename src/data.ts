@@ -61,10 +61,17 @@ export async function loadCoordinatorRequests(): Promise<CoordinatorRequest[]> {
   if (!supabase) return [];
   const results: CoordinatorRequest[] = [];
   try {
+    // Purge any synthetic username-credential accounts accidentally queued
+    void supabase
+      .from("prov_coordinator_requests")
+      .delete()
+      .like("email", "%@accounts.provmeet.example.com");
+
     const { data } = await supabase
       .from("prov_coordinator_requests")
       .select("id,auth_user_id,email,fullname,status,created_at,reviewed_at,reviewed_by")
       .eq("status", "pending")
+      .not("email", "like", "%@accounts.provmeet.example.com")
       .order("created_at", { ascending: false });
     if (data && data.length > 0) {
       results.push(...data);
@@ -81,7 +88,10 @@ export async function loadCoordinatorRequests(): Promise<CoordinatorRequest[]> {
     if (edgeData?.requests && Array.isArray(edgeData.requests)) {
       const seen = new Set(results.map((r) => r.auth_user_id));
       for (const req of edgeData.requests as CoordinatorRequest[]) {
-        if (!seen.has(req.auth_user_id)) {
+        if (
+          !seen.has(req.auth_user_id) &&
+          !req.email.toLowerCase().endsWith("@accounts.provmeet.example.com")
+        ) {
           seen.add(req.auth_user_id);
           results.push(req);
         }
@@ -91,7 +101,11 @@ export async function loadCoordinatorRequests(): Promise<CoordinatorRequest[]> {
     // Ignore if edge function is unavailable
   }
 
-  return results;
+  return results.filter(
+    (r) =>
+      r.email &&
+      !r.email.toLowerCase().endsWith("@accounts.provmeet.example.com"),
+  );
 }
 
 export async function loadQualifiers(): Promise<Qualifier[]> {
