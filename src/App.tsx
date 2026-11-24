@@ -102,22 +102,33 @@ export default function App() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
+  const reloadProfile = useCallback(async () => {
     if (!supabase || !session?.user) {
       setProfile(null);
       return;
     }
     const client = supabase;
-    void client
+    const { data: row, error: lookupError } = await client
       .from("prov_coordinators")
-      .select("id,username,fullname,is_admin,auth_user_id,must_change_password")
+      .select("id,username,fullname,email,is_admin,auth_user_id,must_change_password")
       .eq("auth_user_id", session.user.id)
-      .maybeSingle()
-      .then(({ data: row, error: lookupError }) => {
-        if (lookupError) setError(lookupError.message);
-        setProfile(row as Coordinator | null);
-      });
+      .maybeSingle();
+    if (lookupError) {
+      const { data: fallbackRow, error: fallbackError } = await client
+        .from("prov_coordinators")
+        .select("id,username,fullname,is_admin,auth_user_id,must_change_password")
+        .eq("auth_user_id", session.user.id)
+        .maybeSingle();
+      if (fallbackError) setError(fallbackError.message);
+      setProfile(fallbackRow as Coordinator | null);
+      return;
+    }
+    setProfile(row as Coordinator | null);
   }, [session]);
+
+  useEffect(() => {
+    void reloadProfile();
+  }, [reloadProfile]);
 
   useEffect(() => {
     void refresh();
@@ -308,6 +319,7 @@ export default function App() {
         session={session}
         navigate={navigate}
         onSignOut={signOut}
+        onCheckStatus={reloadProfile}
       />
     );
   else if (

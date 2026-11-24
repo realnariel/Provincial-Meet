@@ -4,6 +4,7 @@ import type { AppData } from "./App";
 import {
   bulkAddQualifiers,
   bulkDeleteQualifiers,
+  loadCoordinatorRequests,
   loadCoordinators,
   loadQualifiers,
   removeEvent,
@@ -11,11 +12,12 @@ import {
   saveEvent,
   saveQualifier,
 } from "./data";
-import { requireSupabase, usernameEmail } from "./supabase";
+import { requireSupabase, supabase, usernameEmail } from "./supabase";
 import {
   DIVISIONS,
   SPORTS_CATEGORIES,
   type Coordinator,
+  type CoordinatorRequest,
   type Division,
   type MeetEvent,
   type Qualifier,
@@ -102,23 +104,57 @@ export function LoginPage({
   session,
   navigate,
   onSignOut,
+  onCheckStatus,
 }: {
   profile: Coordinator | null;
   session?: Session | null;
   navigate: Nav;
   onSignOut?: () => void;
+  onCheckStatus?: () => Promise<void> | void;
 }) {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const [requestRecorded, setRequestRecorded] = useState(false);
+  const [statusFeedback, setStatusFeedback] = useState("");
 
   useEffect(() => {
     if (!profile) return;
     const timer = window.setTimeout(() => navigate("/"), 1400);
     return () => window.clearTimeout(timer);
   }, [profile, navigate]);
+
+  useEffect(() => {
+    if (!session?.user || profile) return;
+    const db = supabase;
+    if (!db) return;
+    const email = session.user.email ?? "";
+    const rawName =
+      (session.user.user_metadata?.full_name as string | undefined) ||
+      (session.user.user_metadata?.name as string | undefined) ||
+      email.split("@")[0] ||
+      "Coordinator";
+    void Promise.resolve(
+      db
+        .from("prov_coordinator_requests")
+        .upsert(
+          {
+            auth_user_id: session.user.id,
+            email,
+            fullname: rawName,
+            status: "pending",
+          },
+          { onConflict: "auth_user_id" },
+        ),
+    )
+      .then(({ error: upsertErr }) => {
+        if (!upsertErr) setRequestRecorded(true);
+      })
+      .catch(() => {});
+  }, [session, profile]);
 
   async function handleGoogleAuth() {
     setBusy(true);
@@ -134,6 +170,33 @@ export function LoginPage({
     } catch (cause) {
       setError(message(cause));
       setBusy(false);
+    }
+  }
+
+  async function handleCheckStatus() {
+    setCheckingStatus(true);
+    setStatusFeedback("");
+    try {
+      if (onCheckStatus) await onCheckStatus();
+      if (supabase && session?.user) {
+        const { data: req } = await supabase
+          .from("prov_coordinator_requests")
+          .select("status")
+          .eq("auth_user_id", session.user.id)
+          .maybeSingle();
+        if (req?.status === "rejected") {
+          setStatusFeedback("Your registration request was declined by the administrator.");
+        } else if (req?.status === "approved") {
+          setStatusFeedback("Registration approved! Connecting to system…");
+          if (onCheckStatus) await onCheckStatus();
+        } else {
+          setStatusFeedback("Status checked: Still awaiting administrator confirmation.");
+        }
+      }
+    } catch {
+      setStatusFeedback("Could not refresh status. Please try again in a moment.");
+    } finally {
+      setCheckingStatus(false);
     }
   }
 
@@ -166,25 +229,70 @@ export function LoginPage({
       </section>
     );
 
-  if (session?.user && !profile)
+  if (session?.user && !profile) {
+    const rawName =
+      (session.user.user_metadata?.full_name as string | undefined) ||
+      (session.user.user_metadata?.name as string | undefined) ||
+      "Google User";
     return (
-      <section className="panel auth-card">
-        <span className="eyebrow dark">Account Verification</span>
-        <h1>Google Account Connected</h1>
-        <div className="auth-user-badge">
-          <i className="bi bi-person-check-fill" aria-hidden="true" />
-          <span>{session.user.email}</span>
+      <section className="panel auth-card pending-auth-card">
+        <span className="eyebrow dark">Coordinator Registration</span>
+        <div className="pending-status-banner">
+          <div className="pending-badge-icon">
+            <i className="bi bi-hourglass-split" aria-hidden="true" />
+          </div>
+          <div>
+            <h1>Registration Received</h1>
+            <span className="pending-status-pill">
+              <i className="bi bi-clock-history" aria-hidden="true" /> Awaiting Admin Approval
+            </span>
+          </div>
         </div>
+
+        <div className="pending-details-box">
+          <div className="pending-detail-row">
+            <span className="pending-detail-label">Full Name</span>
+            <span className="pending-detail-value">{rawName}</span>
+          </div>
+          <div className="pending-detail-row">
+            <span className="pending-detail-label">Google Email</span>
+            <span className="pending-detail-value email-accent">{session.user.email}</span>
+          </div>
+          <div className="pending-detail-row">
+            <span className="pending-detail-label">Submission Status</span>
+            <span className="pending-detail-value">
+              {requestRecorded ? "Application Recorded & Queued" : "Connected"}
+            </span>
+          </div>
+        </div>
+
         <div className="alert warning" role="status">
           <div>
-            <strong>Coordinator access required</strong>
+            <strong>Administrator Confirmation Required</strong>
             <p style={{ margin: "0.35rem 0 0", fontSize: "0.86rem", lineHeight: 1.45 }}>
-              This Google account is signed in, but has not yet been linked to an event coordinator profile for Bohol Provincial Meet 2026.
-              Please provide your Google email address to the Meet Administrator to activate your event management access.
+              Your Google account is authenticated and your coordinator registration is registered with the system.
+              To maintain official scoring integrity, an administrator must confirm your access in the <strong>Coordinator Directory</strong> before you can enter results.
             </p>
           </div>
         </div>
+
+        {statusFeedback && (
+          <div className="alert info-status" role="status">
+            <i className="bi bi-info-circle-fill" aria-hidden="true" />
+            <span>{statusFeedback}</span>
+          </div>
+        )}
+
         <div className="auth-action-stack">
+          <button
+            type="button"
+            className="check-status-btn"
+            disabled={checkingStatus}
+            onClick={() => void handleCheckStatus()}
+          >
+            <i className={`bi bi-arrow-clockwise ${checkingStatus ? "spin" : ""}`} aria-hidden="true" />
+            <span>{checkingStatus ? "Checking status…" : "Check Approval Status"}</span>
+          </button>
           <button
             type="button"
             className="secondary-btn auth-signout-btn"
@@ -209,6 +317,7 @@ export function LoginPage({
         </div>
       </section>
     );
+  }
 
   return (
     <section className="panel auth-card">
@@ -602,8 +711,10 @@ function CoordinatorAdmin({
   loadError: string;
   reload: () => Promise<void>;
 }) {
+  const [requests, setRequests] = useState<CoordinatorRequest[]>([]);
   const [username, setUsername] = useState("");
   const [fullname, setFullname] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -611,10 +722,21 @@ function CoordinatorAdmin({
   const [notice, setNotice] = useState("");
   const [editing, setEditing] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
   const [editAdmin, setEditAdmin] = useState(false);
   const [resetPassword, setResetPassword] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const editRef = useRef<HTMLDivElement>(null);
+
+  async function loadPending() {
+    const list = await loadCoordinatorRequests();
+    setRequests(list);
+  }
+
+  useEffect(() => {
+    void loadPending();
+  }, []);
+
   async function request(action: string, extra: Record<string, unknown>, success: string) {
     setBusy(true);
     setError("");
@@ -640,7 +762,7 @@ function CoordinatorAdmin({
         throw invokeError;
       }
       if (data?.error) throw new Error(data.error);
-      await reload();
+      await Promise.all([reload(), loadPending()]);
       setNotice(success);
       return true;
     } catch (cause) {
@@ -650,29 +772,429 @@ function CoordinatorAdmin({
       setBusy(false);
     }
   }
+
+  async function approveRequest(req: CoordinatorRequest, makeAdmin = false) {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const { error: rpcError } = await requireSupabase().rpc(
+        "prov_approve_coordinator_request",
+        {
+          p_request_id: req.id,
+          p_is_admin: makeAdmin,
+        },
+      );
+      if (rpcError) throw rpcError;
+      await Promise.all([reload(), loadPending()]);
+      setNotice(
+        `Approved ${req.fullname} (${req.email}) as ${makeAdmin ? "Administrator" : "Coordinator"}! They can now sign in with Google.`,
+      );
+    } catch (cause) {
+      setError(message(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function rejectRequest(req: CoordinatorRequest) {
+    if (!window.confirm(`Decline coordinator request from ${req.fullname} (${req.email})?`))
+      return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const { error: rpcError } = await requireSupabase().rpc(
+        "prov_reject_coordinator_request",
+        {
+          p_request_id: req.id,
+        },
+      );
+      if (rpcError) throw rpcError;
+      await loadPending();
+      setNotice(`Registration request from ${req.fullname} declined.`);
+    } catch (cause) {
+      setError(message(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function createCoordinator(event: FormEvent) {
     event.preventDefault();
-    const success = await request("create", { username, fullname, password, isAdmin }, "Coordinator account created.");
-    if (success) { setUsername(""); setFullname(""); setPassword(""); setIsAdmin(false); setShowCreate(false); }
+    const success = await request(
+      "create",
+      { username, fullname, email: email.trim() || undefined, password, isAdmin },
+      "Coordinator account created.",
+    );
+    if (success) {
+      if (email.trim() && supabase) {
+        // Also update email directly if prov_coordinators has email column
+        void supabase
+          .from("prov_coordinators")
+          .update({ email: email.trim() })
+          .eq("username", username.trim().toLowerCase())
+          .then(() => void reload());
+      }
+      setUsername("");
+      setFullname("");
+      setEmail("");
+      setPassword("");
+      setIsAdmin(false);
+      setShowCreate(false);
+    }
   }
+
   function beginEdit(item: Coordinator) {
     setEditing(item.id);
     setEditName(item.fullname);
+    setEditEmail(item.email || "");
     setEditAdmin(item.is_admin);
     setResetPassword("");
     setNotice("");
     setError("");
     window.setTimeout(() => editRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }
+
   return (
     <section className="panel staff-admin-page">
-      <div className="staff-page-header"><div><span className="staff-page-icon"><i className="bi bi-people-fill" /></span><div><h1>Coordinator Directory</h1><p>Manage system access credentials</p></div></div><button type="button" onClick={() => { setShowCreate(true); setEditing(null); }}><i className="bi bi-person-plus-fill" /> Add New</button></div>
+      <div className="staff-page-header">
+        <div>
+          <span className="staff-page-icon"><i className="bi bi-people-fill" /></span>
+          <div>
+            <h1>Coordinator Directory</h1>
+            <p>Manage system credentials and approve Google registrations</p>
+          </div>
+        </div>
+        <button type="button" onClick={() => { setShowCreate(true); setEditing(null); }}>
+          <i className="bi bi-person-plus-fill" /> Add New
+        </button>
+      </div>
+
       {(error || loadError) && <div className="alert error" role="alert">{error || loadError}</div>}
       {notice && <div className="alert success" role="status">{notice}</div>}
-      {showCreate && <div className="staff-form-card"><div className="staff-card-heading"><h2>Add Coordinator</h2><button type="button" className="staff-close-button" onClick={() => setShowCreate(false)} aria-label="Close coordinator form"><i className="bi bi-x-lg" /></button></div><form className="form-stack" onSubmit={createCoordinator}><div className="form-two"><label>Full Name<input value={fullname} onChange={(event) => setFullname(event.target.value)} required /></label><label>Username<input value={username} onChange={(event) => setUsername(event.target.value)} pattern="[a-zA-Z0-9._-]+" required /></label></div><label>Account Password<input type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={6} required /></label><label className="checkbox"><input type="checkbox" checked={isAdmin} onChange={(event) => setIsAdmin(event.target.checked)} /> Administrator access</label><div className="button-row"><button disabled={busy}>{busy ? "Creating…" : "Create Account"}</button><button type="button" className="button-outline" onClick={() => setShowCreate(false)}>Cancel</button></div></form></div>}
-      <div className="staff-table-card"><table className="staff-responsive-table coordinator-admin-table"><thead><tr><th>Full Name</th><th>Username</th><th>Access Level</th><th>Actions</th></tr></thead><tbody>{coordinators.map((item) => <tr key={item.id}><td data-label="Full Name"><strong>{item.fullname}</strong></td><td data-label="Username">@{item.username}</td><td data-label="Access Level"><span className={item.is_admin ? "staff-role-badge admin" : "staff-role-badge"}>{item.is_admin ? "Administrator" : "Coordinator"}</span></td><td data-label="Actions"><div className="staff-actions"><button type="button" className="staff-icon-button edit" disabled={busy} onClick={() => beginEdit(item)} aria-label={`Edit ${item.fullname}`}><i className="bi bi-pencil-square" /></button><button type="button" className="staff-icon-button delete" disabled={busy} onClick={() => { if (window.confirm(`Delete coordinator ${item.username}?`)) void request("delete", { id: item.id }, "Coordinator account deleted."); }} aria-label={`Delete ${item.fullname}`}><i className="bi bi-trash3" /></button></div></td></tr>)}</tbody></table></div>
+
+      {requests.length > 0 && (
+        <div className="staff-pending-card">
+          <div className="staff-pending-header">
+            <span className="staff-pending-icon"><i className="bi bi-person-lines-fill" /></span>
+            <div>
+              <h2>Pending Google Sign-ups ({requests.length})</h2>
+              <p>The following users registered with Google and are waiting for your approval to access event management.</p>
+            </div>
+          </div>
+          <div className="staff-table-card">
+            <table className="staff-responsive-table">
+              <thead>
+                <tr>
+                  <th>Full Name</th>
+                  <th>Google Email</th>
+                  <th>Requested Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {requests.map((req) => (
+                  <tr key={req.id}>
+                    <td data-label="Full Name"><strong>{req.fullname}</strong></td>
+                    <td data-label="Google Email">
+                      <span className="email-badge">
+                        <i className="bi bi-envelope-check-fill" style={{ marginRight: "0.4rem", color: "#4285F4" }} />
+                        {req.email}
+                      </span>
+                    </td>
+                    <td data-label="Requested Date">
+                      {new Date(req.created_at).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </td>
+                    <td data-label="Actions">
+                      <div className="staff-actions">
+                        <button
+                          type="button"
+                          className="approve-action-btn"
+                          disabled={busy}
+                          onClick={() => void approveRequest(req, false)}
+                          title="Approve as Event Coordinator"
+                        >
+                          <i className="bi bi-check-circle-fill" /> Approve
+                        </button>
+                        <button
+                          type="button"
+                          className="approve-admin-btn"
+                          disabled={busy}
+                          onClick={() => void approveRequest(req, true)}
+                          title="Approve with Administrator Rights"
+                        >
+                          <i className="bi bi-shield-check" /> Admin
+                        </button>
+                        <button
+                          type="button"
+                          className="staff-icon-button delete"
+                          disabled={busy}
+                          onClick={() => void rejectRequest(req)}
+                          title="Decline Request"
+                        >
+                          <i className="bi bi-x-circle" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {showCreate && (
+        <div className="staff-form-card">
+          <div className="staff-card-heading">
+            <h2>Add Coordinator</h2>
+            <button
+              type="button"
+              className="staff-close-button"
+              onClick={() => setShowCreate(false)}
+              aria-label="Close coordinator form"
+            >
+              <i className="bi bi-x-lg" />
+            </button>
+          </div>
+          <form className="form-stack" onSubmit={createCoordinator}>
+            <div className="form-two">
+              <label>
+                Full Name
+                <input
+                  value={fullname}
+                  onChange={(event) => setFullname(event.target.value)}
+                  placeholder="e.g. Maria Santos"
+                  required
+                />
+              </label>
+              <label>
+                Email Address
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="e.g. maria.santos@deped.gov.ph"
+                />
+              </label>
+            </div>
+            <div className="form-two">
+              <label>
+                Username
+                <input
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                  pattern="[a-zA-Z0-9._-]+"
+                  placeholder="e.g. maria_santos"
+                  required
+                />
+              </label>
+              <label>
+                Account Password
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  minLength={6}
+                  placeholder="Minimum 6 characters"
+                  required
+                />
+              </label>
+            </div>
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={isAdmin}
+                onChange={(event) => setIsAdmin(event.target.checked)}
+              />{" "}
+              Administrator access
+            </label>
+            <div className="button-row">
+              <button disabled={busy}>{busy ? "Creating…" : "Create Account"}</button>
+              <button type="button" className="button-outline" onClick={() => setShowCreate(false)}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      <div className="staff-table-card">
+        <table className="staff-responsive-table coordinator-admin-table">
+          <thead>
+            <tr>
+              <th>Full Name</th>
+              <th>Email</th>
+              <th>Username</th>
+              <th>Access Level</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {coordinators.map((item) => (
+              <tr key={item.id}>
+                <td data-label="Full Name">
+                  <strong>{item.fullname}</strong>
+                </td>
+                <td data-label="Email">
+                  {item.email ? (
+                    <span className="email-cell">{item.email}</span>
+                  ) : (
+                    <span className="muted-dash">—</span>
+                  )}
+                </td>
+                <td data-label="Username">@{item.username}</td>
+                <td data-label="Access Level">
+                  <span className={item.is_admin ? "staff-role-badge admin" : "staff-role-badge"}>
+                    {item.is_admin ? "Administrator" : "Coordinator"}
+                  </span>
+                </td>
+                <td data-label="Actions">
+                  <div className="staff-actions">
+                    <button
+                      type="button"
+                      className="staff-icon-button edit"
+                      disabled={busy}
+                      onClick={() => beginEdit(item)}
+                      aria-label={`Edit ${item.fullname}`}
+                    >
+                      <i className="bi bi-pencil-square" />
+                    </button>
+                    <button
+                      type="button"
+                      className="staff-icon-button delete"
+                      disabled={busy}
+                      onClick={() => {
+                        if (window.confirm(`Delete coordinator ${item.username}?`))
+                          void request("delete", { id: item.id }, "Coordinator account deleted.");
+                      }}
+                      aria-label={`Delete ${item.fullname}`}
+                    >
+                      <i className="bi bi-trash3" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
       {!coordinators.length && !loadError && <p className="empty">No coordinator accounts found.</p>}
-      {editing !== null && (() => { const item = coordinators.find((value) => value.id === editing); if (!item) return null; return <div className="staff-form-card" ref={editRef}><div className="staff-card-heading"><h2>Edit Coordinator</h2><button type="button" className="staff-close-button" onClick={() => setEditing(null)} aria-label="Close edit form"><i className="bi bi-x-lg" /></button></div><div className="form-stack"><label>Username<input value={item.username} disabled /></label><label>Full Name<input value={editName} onChange={(event) => setEditName(event.target.value)} required /></label><label className="checkbox"><input type="checkbox" checked={editAdmin} onChange={(event) => setEditAdmin(event.target.checked)} /> Administrator access</label><div className="button-row"><button type="button" disabled={busy || !editName.trim()} onClick={async () => { const success = await request("update", { id: item.id, fullname: editName, isAdmin: editAdmin }, "Coordinator details updated."); if (success) setEditing(null); }}>{busy ? "Saving…" : "Save Details"}</button></div><div className="staff-password-reset"><h3>Reset Password</h3><label>New Temporary Password<input type="password" autoComplete="new-password" minLength={6} value={resetPassword} onChange={(event) => setResetPassword(event.target.value)} /></label><button type="button" className="button-outline" disabled={busy || resetPassword.length < 6} onClick={async () => { const success = await request("reset-password", { id: item.id, password: resetPassword }, "Password reset successfully."); if (success) setResetPassword(""); }}>Reset Password</button></div></div></div>; })()}
+
+      {editing !== null &&
+        (() => {
+          const item = coordinators.find((value) => value.id === editing);
+          if (!item) return null;
+          return (
+            <div className="staff-form-card" ref={editRef}>
+              <div className="staff-card-heading">
+                <h2>Edit Coordinator</h2>
+                <button
+                  type="button"
+                  className="staff-close-button"
+                  onClick={() => setEditing(null)}
+                  aria-label="Close edit form"
+                >
+                  <i className="bi bi-x-lg" />
+                </button>
+              </div>
+              <div className="form-stack">
+                <div className="form-two">
+                  <label>
+                    Username
+                    <input value={item.username} disabled />
+                  </label>
+                  <label>
+                    Full Name
+                    <input
+                      value={editName}
+                      onChange={(event) => setEditName(event.target.value)}
+                      required
+                    />
+                  </label>
+                </div>
+                <label>
+                  Email Address
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={(event) => setEditEmail(event.target.value)}
+                    placeholder="e.g. coordinator@deped.gov.ph"
+                  />
+                </label>
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={editAdmin}
+                    onChange={(event) => setEditAdmin(event.target.checked)}
+                  />{" "}
+                  Administrator access
+                </label>
+                <div className="button-row">
+                  <button
+                    type="button"
+                    disabled={busy || !editName.trim()}
+                    onClick={async () => {
+                      const success = await request(
+                        "update",
+                        { id: item.id, fullname: editName, isAdmin: editAdmin },
+                        "Coordinator details updated.",
+                      );
+                      if (success) {
+                        if (supabase) {
+                          void supabase
+                            .from("prov_coordinators")
+                            .update({ email: editEmail.trim() || null })
+                            .eq("id", item.id)
+                            .then(() => void reload());
+                        }
+                        setEditing(null);
+                      }
+                    }}
+                  >
+                    {busy ? "Saving…" : "Save Details"}
+                  </button>
+                </div>
+                <div className="staff-password-reset">
+                  <h3>Reset Password</h3>
+                  <label>
+                    New Temporary Password
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      minLength={6}
+                      value={resetPassword}
+                      onChange={(event) => setResetPassword(event.target.value)}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="button-outline"
+                    disabled={busy || resetPassword.length < 6}
+                    onClick={async () => {
+                      const success = await request(
+                        "reset-password",
+                        { id: item.id, password: resetPassword },
+                        "Password reset successfully.",
+                      );
+                      if (success) setResetPassword("");
+                    }}
+                  >
+                    Reset Password
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
     </section>
   );
 }

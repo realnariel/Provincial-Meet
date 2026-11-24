@@ -43,9 +43,21 @@ export interface Coordinator {
   id: number
   username: string
   fullname: string
+  email?: string | null
   is_admin: boolean
   auth_user_id: string
   must_change_password: boolean
+}
+
+export interface CoordinatorRequest {
+  id: number
+  auth_user_id: string
+  email: string
+  fullname: string
+  status: "pending" | "approved" | "rejected"
+  created_at: string
+  reviewed_at?: string | null
+  reviewed_by?: string | null
 }
 
 export interface Qualifier {

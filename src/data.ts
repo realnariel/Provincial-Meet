@@ -1,6 +1,7 @@
-import { requireSupabase } from "./supabase";
+import { requireSupabase, supabase } from "./supabase";
 import type {
   Coordinator,
+  CoordinatorRequest,
   EventAward,
   MedalRow,
   MeetEvent,
@@ -42,10 +43,33 @@ export async function loadPublicData() {
 }
 
 export async function loadCoordinators(): Promise<Coordinator[]> {
-  return readAll<Coordinator>(
-    "prov_coordinators",
-    "id,username,fullname,is_admin,auth_user_id,must_change_password",
-  );
+  try {
+    return await readAll<Coordinator>(
+      "prov_coordinators",
+      "id,username,fullname,email,is_admin,auth_user_id,must_change_password",
+    );
+  } catch {
+    // Fallback if email column is not yet present in the table
+    return await readAll<Coordinator>(
+      "prov_coordinators",
+      "id,username,fullname,is_admin,auth_user_id,must_change_password",
+    );
+  }
+}
+
+export async function loadCoordinatorRequests(): Promise<CoordinatorRequest[]> {
+  if (!supabase) return [];
+  try {
+    const { data, error } = await supabase
+      .from("prov_coordinator_requests")
+      .select("id,auth_user_id,email,fullname,status,created_at,reviewed_at,reviewed_by")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+    if (error) return [];
+    return data ?? [];
+  } catch {
+    return [];
+  }
 }
 
 export async function loadQualifiers(): Promise<Qualifier[]> {
