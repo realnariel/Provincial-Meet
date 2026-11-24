@@ -245,6 +245,11 @@ grant execute on function public.prov_admin_update_coordinator(integer, text, te
 grant execute on function public.prov_admin_delete_coordinator(integer) to authenticated;
 
 -- 9. Direct table policies for administrators
+drop policy if exists prov_coordinators_admin_insert on public.prov_coordinators;
+create policy prov_coordinators_admin_insert on public.prov_coordinators
+  for insert to authenticated
+  with check ((select private.prov_is_admin()));
+
 drop policy if exists prov_coordinators_admin_update on public.prov_coordinators;
 create policy prov_coordinators_admin_update on public.prov_coordinators
   for update to authenticated
@@ -256,6 +261,7 @@ create policy prov_coordinators_admin_delete on public.prov_coordinators
   for delete to authenticated
   using ((select private.prov_is_admin()));
 
+grant insert (username, fullname, email, is_admin, auth_user_id, passwordhash, must_change_password) on public.prov_coordinators to authenticated;
 grant update (fullname, username, email, is_admin) on public.prov_coordinators to authenticated;
 grant delete on public.prov_coordinators to authenticated;
 

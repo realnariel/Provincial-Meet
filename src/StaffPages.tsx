@@ -129,6 +129,26 @@ export function LoginPage({
 
   useEffect(() => {
     if (!session?.user || profile) return;
+    const flow = sessionStorage.getItem("google_auth_flow");
+
+    // If the user clicked "Sign in with Google", but does NOT have a coordinator profile:
+    if (flow === "signin") {
+      const email = session.user.email || "this Google account";
+      sessionStorage.removeItem("google_auth_flow");
+      setError(
+        `No coordinator account found for ${email}. Please sign up first to register your account.`,
+      );
+      setMode("signup");
+      // Sign out of the temporary auth session so they are not left in pending auth state
+      if (onSignOut) {
+        onSignOut();
+      } else if (supabase) {
+        void supabase.auth.signOut();
+      }
+      return;
+    }
+
+    // Otherwise, flow === "signup" (or explicit registration): record pending request
     const db = supabase;
     if (!db) return;
     const email = session.user.email ?? "";
@@ -154,11 +174,12 @@ export function LoginPage({
         if (!upsertErr) setRequestRecorded(true);
       })
       .catch(() => {});
-  }, [session, profile]);
+  }, [session, profile, onSignOut]);
 
-  async function handleGoogleAuth() {
+  async function handleGoogleAuth(flow: "signin" | "signup") {
     setBusy(true);
     setError("");
+    sessionStorage.setItem("google_auth_flow", flow);
     try {
       const { error: oauthError } = await requireSupabase().auth.signInWithOAuth({
         provider: "google",
@@ -168,6 +189,7 @@ export function LoginPage({
       });
       if (oauthError) throw oauthError;
     } catch (cause) {
+      sessionStorage.removeItem("google_auth_flow");
       setError(message(cause));
       setBusy(false);
     }
@@ -237,14 +259,14 @@ export function LoginPage({
     return (
       <section className="panel auth-card pending-auth-card">
         <span className="eyebrow dark">Coordinator Registration</span>
-        <div className="pending-status-banner">
-          <div className="pending-badge-icon">
-            <i className="bi bi-hourglass-split" aria-hidden="true" />
+        <div className="pending-status-banner confirmation-banner">
+          <div className="pending-badge-icon confirmation-badge-icon">
+            <i className="bi bi-check-circle-fill" aria-hidden="true" />
           </div>
           <div>
-            <h1>Registration Received</h1>
+            <h1>Sign-up Successful!</h1>
             <span className="pending-status-pill">
-              <i className="bi bi-clock-history" aria-hidden="true" /> Awaiting Admin Approval
+              <i className="bi bi-hourglass-split" aria-hidden="true" /> Waiting for Administrator Confirmation
             </span>
           </div>
         </div>
@@ -261,17 +283,16 @@ export function LoginPage({
           <div className="pending-detail-row">
             <span className="pending-detail-label">Submission Status</span>
             <span className="pending-detail-value">
-              {requestRecorded ? "Application Recorded & Queued" : "Connected"}
+              {requestRecorded ? "Application Recorded & Queued for Approval" : "Sign-up Received"}
             </span>
           </div>
         </div>
 
-        <div className="alert warning" role="status">
+        <div className="alert info-status" role="status">
           <div>
-            <strong>Administrator Confirmation Required</strong>
+            <strong>Registration Received & Confirmed</strong>
             <p style={{ margin: "0.35rem 0 0", fontSize: "0.86rem", lineHeight: 1.45 }}>
-              Your Google account is authenticated and your coordinator registration is registered with the system.
-              To maintain official scoring integrity, an administrator must confirm your access in the <strong>Coordinator Directory</strong> before you can enter results.
+              Your Google account is now registered with Bohol Provincial Meet. An administrator will review and confirm your account in the <strong>Coordinator Directory</strong> to assign your permissions. Once confirmed, you can sign in directly with Google.
             </p>
           </div>
         </div>
@@ -367,7 +388,7 @@ export function LoginPage({
       <button
         type="button"
         className="google-auth-btn"
-        onClick={() => void handleGoogleAuth()}
+        onClick={() => void handleGoogleAuth(mode)}
         disabled={busy}
       >
         <GoogleIcon />
@@ -699,6 +720,7 @@ function CoordinatorAdmin({
   reload: () => Promise<void>;
 }) {
   const [requests, setRequests] = useState<CoordinatorRequest[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<Record<string, "coordinator" | "admin">>({});
   const [username, setUsername] = useState("");
   const [fullname, setFullname] = useState("");
   const [email, setEmail] = useState("");
@@ -777,10 +799,73 @@ function CoordinatorAdmin({
             p_is_admin: makeAdmin,
           },
         );
-        if (!rpcError) approved = true;
+        if (!rpcError) {
+          approved = true;
+        }
       }
 
-      // 2. If not approved by RPC (e.g. auth user fallback or missing table), use Edge function
+      // 2. Direct database upsert into prov_coordinators as authenticated admin
+      if (!approved && supabase) {
+        try {
+          const email = req.email.trim();
+          let baseUsername = (email.split("@")[0] || "coord")
+            .toLowerCase()
+            .replace(/[^a-z0-9._-]/g, "");
+          if (baseUsername.length < 3) baseUsername = "coord_" + baseUsername;
+
+          // Check if already in prov_coordinators
+          const { data: existingCoord } = await supabase
+            .from("prov_coordinators")
+            .select("id")
+            .eq("auth_user_id", req.auth_user_id)
+            .maybeSingle();
+
+          if (existingCoord) {
+            const { error: updErr } = await supabase
+              .from("prov_coordinators")
+              .update({ is_admin: makeAdmin, email, fullname: req.fullname })
+              .eq("id", existingCoord.id);
+            if (!updErr) approved = true;
+          } else {
+            // Find unique username
+            let candidate = baseUsername;
+            let counter = 1;
+            while (true) {
+              const { data: taken } = await supabase
+                .from("prov_coordinators")
+                .select("id")
+                .eq("username", candidate)
+                .maybeSingle();
+              if (!taken) break;
+              counter++;
+              candidate = `${baseUsername}${counter}`;
+            }
+
+            const { error: insErr } = await supabase.from("prov_coordinators").insert({
+              username: candidate,
+              fullname: req.fullname || email.split("@")[0] || "Coordinator",
+              email: email || null,
+              is_admin: makeAdmin,
+              auth_user_id: req.auth_user_id,
+              passwordhash: "",
+              must_change_password: false,
+            });
+            if (!insErr) approved = true;
+          }
+
+          if (approved) {
+            // Mark request as approved
+            await supabase
+              .from("prov_coordinator_requests")
+              .update({ status: "approved", reviewed_at: new Date().toISOString() })
+              .eq("auth_user_id", req.auth_user_id);
+          }
+        } catch {
+          // Continue to step 3 fallback
+        }
+      }
+
+      // 3. Fallback to Edge function if RPC and direct DB were not available
       if (!approved) {
         const success = await request(
           "approve-user",
@@ -807,7 +892,7 @@ function CoordinatorAdmin({
   }
 
   async function rejectRequest(req: CoordinatorRequest) {
-    if (!window.confirm(`Decline coordinator request from ${req.fullname} (${req.email})?`))
+    if (!window.confirm(`Remove pending sign-up request for ${req.fullname} (${req.email})?`))
       return;
     setBusy(true);
     setError("");
@@ -818,8 +903,14 @@ function CoordinatorAdmin({
           p_request_id: req.id,
         });
       }
+      if (supabase) {
+        await supabase
+          .from("prov_coordinator_requests")
+          .delete()
+          .eq("auth_user_id", req.auth_user_id);
+      }
       setRequests((prev) => prev.filter((r) => r.auth_user_id !== req.auth_user_id));
-      setNotice(`Registration request from ${req.fullname} dismissed.`);
+      setNotice(`Registration request for ${req.fullname} (${req.email}) removed.`);
     } catch (cause) {
       setError(message(cause));
     } finally {
@@ -963,61 +1054,65 @@ function CoordinatorAdmin({
                 <tr>
                   <th>Full Name</th>
                   <th>Google Email</th>
-                  <th>Requested Date</th>
+                  <th>Role to Assign</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {requests.map((req) => (
-                  <tr key={req.id}>
-                    <td data-label="Full Name"><strong>{req.fullname}</strong></td>
-                    <td data-label="Google Email">
-                      <span className="email-badge">
-                        <i className="bi bi-envelope-check-fill" style={{ marginRight: "0.4rem", color: "#4285F4" }} />
-                        {req.email}
-                      </span>
-                    </td>
-                    <td data-label="Requested Date">
-                      {new Date(req.created_at).toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </td>
-                    <td data-label="Actions">
-                      <div className="staff-actions">
-                        <button
-                          type="button"
-                          className="approve-action-btn"
+                {requests.map((req) => {
+                  const assignedRole = selectedRoles[req.auth_user_id] ?? "coordinator";
+                  return (
+                    <tr key={req.id || req.auth_user_id}>
+                      <td data-label="Full Name"><strong>{req.fullname}</strong></td>
+                      <td data-label="Google Email">
+                        <span className="email-badge">
+                          <i className="bi bi-envelope-check-fill" style={{ marginRight: "0.4rem", color: "#4285F4" }} />
+                          {req.email}
+                        </span>
+                      </td>
+                      <td data-label="Role to Assign">
+                        <select
+                          className="pending-role-select"
+                          value={assignedRole}
                           disabled={busy}
-                          onClick={() => void approveRequest(req, false)}
-                          title="Approve as Event Coordinator"
+                          onChange={(e) =>
+                            setSelectedRoles((prev) => ({
+                              ...prev,
+                              [req.auth_user_id]: e.target.value as "coordinator" | "admin",
+                            }))
+                          }
+                          aria-label={`Assign role for ${req.fullname}`}
                         >
-                          <i className="bi bi-check-circle-fill" /> Approve
-                        </button>
-                        <button
-                          type="button"
-                          className="approve-admin-btn"
-                          disabled={busy}
-                          onClick={() => void approveRequest(req, true)}
-                          title="Approve with Administrator Rights"
-                        >
-                          <i className="bi bi-shield-check" /> Admin
-                        </button>
-                        <button
-                          type="button"
-                          className="staff-icon-button delete"
-                          disabled={busy}
-                          onClick={() => void rejectRequest(req)}
-                          title="Decline Request"
-                        >
-                          <i className="bi bi-x-circle" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          <option value="coordinator">Coordinator</option>
+                          <option value="admin">Administrator</option>
+                        </select>
+                      </td>
+                      <td data-label="Actions">
+                        <div className="staff-actions">
+                          <button
+                            type="button"
+                            className="approve-action-btn"
+                            disabled={busy}
+                            onClick={() => void approveRequest(req, assignedRole === "admin")}
+                            title={`Approve as ${assignedRole === "admin" ? "Administrator" : "Coordinator"}`}
+                          >
+                            <i className="bi bi-check-circle-fill" /> Approve
+                          </button>
+                          <button
+                            type="button"
+                            className="staff-icon-button delete"
+                            disabled={busy}
+                            onClick={() => void rejectRequest(req)}
+                            title="Remove / Decline Request"
+                            aria-label={`Remove pending request for ${req.fullname}`}
+                          >
+                            <i className="bi bi-x-lg" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

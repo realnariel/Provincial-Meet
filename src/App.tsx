@@ -128,6 +128,10 @@ export default function App() {
   // Root-level auto-registration for pending coordinator requests
   useEffect(() => {
     if (!supabase || !session?.user || profile) return;
+    const flow = sessionStorage.getItem("google_auth_flow");
+    // If the user clicked "Sign in with Google", do not auto-register as pending sign-up!
+    if (flow === "signin") return;
+
     const client = supabase;
     const email = session.user.email ?? "";
     const rawName =
