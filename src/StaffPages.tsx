@@ -112,7 +112,6 @@ export function LoginPage({
   onSignOut?: () => void;
   onCheckStatus?: () => Promise<void> | void;
 }) {
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -149,28 +148,8 @@ export function LoginPage({
     // Synthetic credential accounts (@accounts.provmeet.example.com) are username/password logins, never Google sign-ups!
     if (!email || email.toLowerCase().endsWith("@accounts.provmeet.example.com")) return;
 
-    const currentFlow =
-      new URLSearchParams(window.location.search).get("flow") ||
-      localStorage.getItem("google_auth_flow") ||
-      sessionStorage.getItem("google_auth_flow") ||
-      "signup";
-
-    // If it was a signup flow, register immediately!
-    if (currentFlow !== "signin") {
-      void registerUserRequest();
-    } else {
-      // If signin, check if already in requests table
-      if (supabase) {
-        void supabase
-          .from("prov_coordinator_requests")
-          .select("id")
-          .eq("auth_user_id", session.user.id)
-          .maybeSingle()
-          .then(({ data: existing }) => {
-            if (existing) setRequestRecorded(true);
-          });
-      }
-    }
+    // Automatically queue any unapproved Google user for administrator confirmation
+    void registerUserRequest();
   }, [session, profile]);
 
   async function registerUserRequest(): Promise<boolean> {
@@ -225,49 +204,30 @@ export function LoginPage({
     }
   }
 
-  async function submitRegistration() {
-    setBusy(true);
-    setError("");
-    const ok = await registerUserRequest();
-    if (ok) {
-      localStorage.setItem("google_auth_flow", "signup");
-      sessionStorage.setItem("google_auth_flow", "signup");
-      setRequestRecorded(true);
-      setStatusFeedback("Registration submitted! Queued for administrator confirmation in Coordinator Directory.");
-    } else {
-      setError("Could not submit registration. Please try again or check your connection.");
-    }
-    setBusy(false);
-  }
-
   async function handleSignOut() {
     localStorage.removeItem("google_auth_flow");
     sessionStorage.removeItem("google_auth_flow");
     if (supabase) {
       await supabase.auth.signOut();
     }
-    setMode("signin");
+    if (onSignOut) onSignOut();
     setError("");
     setStatusFeedback("");
     window.history.replaceState(null, "", "/login");
   }
 
-  async function handleGoogleAuth(flow: "signin" | "signup") {
+  async function handleGoogleAuth() {
     setBusy(true);
     setError("");
-    localStorage.setItem("google_auth_flow", flow);
-    sessionStorage.setItem("google_auth_flow", flow);
     try {
       const { error: oauthError } = await requireSupabase().auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/login?flow=${flow}`,
+          redirectTo: `${window.location.origin}/login`,
         },
       });
       if (oauthError) throw oauthError;
     } catch (cause) {
-      localStorage.removeItem("google_auth_flow");
-      sessionStorage.removeItem("google_auth_flow");
       setError(message(cause));
       setBusy(false);
     }
@@ -360,42 +320,20 @@ export function LoginPage({
     const rawName =
       (session.user.user_metadata?.full_name as string | undefined) ||
       (session.user.user_metadata?.name as string | undefined) ||
+      userEmail.split("@")[0] ||
       "Google User";
-
-    const currentFlow =
-      new URLSearchParams(window.location.search).get("flow") ||
-      localStorage.getItem("google_auth_flow") ||
-      sessionStorage.getItem("google_auth_flow") ||
-      "signup";
-
-    const isSignInAttempt = currentFlow === "signin" && !requestRecorded;
 
     return (
       <section className="panel auth-card pending-auth-card">
-        <span className="eyebrow dark">
-          {isSignInAttempt ? "Coordinator Sign-in" : "Coordinator Registration"}
-        </span>
-        <div
-          className={`pending-status-banner ${isSignInAttempt ? "unapproved-banner" : "confirmation-banner"}`}
-        >
-          <div
-            className={`pending-badge-icon ${isSignInAttempt ? "unapproved-badge-icon" : "confirmation-badge-icon"}`}
-          >
-            <i
-              className={isSignInAttempt ? "bi bi-shield-exclamation" : "bi bi-check-circle-fill"}
-              aria-hidden="true"
-            />
+        <span className="eyebrow dark">Coordinator Access</span>
+        <div className="pending-status-banner confirmation-banner">
+          <div className="pending-badge-icon confirmation-badge-icon">
+            <i className="bi bi-hourglass-split" aria-hidden="true" />
           </div>
           <div>
-            <h1>{isSignInAttempt ? "Account Not Yet Approved" : "Sign-up Successful!"}</h1>
+            <h1>Waiting for Approval</h1>
             <span className="pending-status-pill">
-              <i
-                className={isSignInAttempt ? "bi bi-clock-history" : "bi bi-hourglass-split"}
-                aria-hidden="true"
-              />{" "}
-              {isSignInAttempt
-                ? "Approval or Registration Required"
-                : "Waiting for Administrator Confirmation"}
+              <i className="bi bi-clock-history" aria-hidden="true" /> Pending Administrator Confirmation
             </span>
           </div>
         </div>
@@ -407,37 +345,25 @@ export function LoginPage({
           </div>
           <div className="pending-detail-row">
             <span className="pending-detail-label">Google Email</span>
-            <span className="pending-detail-value email-accent">{session.user.email}</span>
+            <span className="pending-detail-value email-accent">{userEmail}</span>
           </div>
           <div className="pending-detail-row">
             <span className="pending-detail-label">Status</span>
             <span className="pending-detail-value">
               {requestRecorded
                 ? "Application Queued for Administrator Approval"
-                : isSignInAttempt
-                  ? "Not Yet Approved in System"
-                  : "Sign-up Received"}
+                : "Waiting for Approval"}
             </span>
           </div>
         </div>
 
-        <div className={`alert ${isSignInAttempt ? "warning" : "info-status"}`} role="status">
-          {isSignInAttempt ? (
-            <div>
-              <strong>No Approved Coordinator Profile Found</strong>
-              <p style={{ margin: "0.35rem 0 0", fontSize: "0.86rem", lineHeight: 1.45 }}>
-                You signed in with <strong>{session.user.email}</strong>, but this Google account is not yet authorized in the system.
-                If you have not registered yet, click <strong>"Submit Coordinator Registration"</strong> below so the administrator can confirm your access in the <strong>Coordinator Directory</strong>.
-              </p>
-            </div>
-          ) : (
-            <div>
-              <strong>Registration Received & Confirmed</strong>
-              <p style={{ margin: "0.35rem 0 0", fontSize: "0.86rem", lineHeight: 1.45 }}>
-                Your Google account is now registered with Bohol Provincial Meet. An administrator will review and confirm your account in the <strong>Coordinator Directory</strong> to assign your permissions. Once confirmed, you can sign in directly with Google.
-              </p>
-            </div>
-          )}
+        <div className="alert info-status" role="status">
+          <div>
+            <strong>Access Pending Administrator Approval</strong>
+            <p style={{ margin: "0.35rem 0 0", fontSize: "0.86rem", lineHeight: 1.45 }}>
+              You signed in with <strong>{userEmail}</strong>. Your coordinator account has been automatically queued for administrator review. Once an administrator confirms your account and assigns your designated sport and division in the <strong>Coordinator Directory</strong>, you will be granted access to official scoring.
+            </p>
+          </div>
         </div>
 
         {statusFeedback && (
@@ -448,18 +374,6 @@ export function LoginPage({
         )}
 
         <div className="auth-action-stack">
-          {isSignInAttempt && (
-            <button
-              type="button"
-              className="approve-action-btn"
-              style={{ justifyContent: "center", padding: "0.65rem 1rem", fontSize: "0.92rem" }}
-              disabled={busy}
-              onClick={() => void submitRegistration()}
-            >
-              <i className="bi bi-person-check-fill" aria-hidden="true" />
-              <span>{busy ? "Submitting Registration…" : "Submit Coordinator Registration"}</span>
-            </button>
-          )}
           <button
             type="button"
             className="check-status-btn"
@@ -491,41 +405,10 @@ export function LoginPage({
 
   return (
     <section className="panel auth-card">
-      <div className="auth-tabs" role="tablist" aria-label="Authentication Options">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "signin"}
-          className={`auth-tab ${mode === "signin" ? "active" : ""}`}
-          onClick={() => {
-            setMode("signin");
-            setError("");
-          }}
-        >
-          Sign in
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "signup"}
-          className={`auth-tab ${mode === "signup" ? "active" : ""}`}
-          onClick={() => {
-            setMode("signup");
-            setError("");
-          }}
-        >
-          Sign up
-        </button>
-      </div>
-
-      <span className="eyebrow dark">
-        {mode === "signin" ? "Secure access" : "Coordinator Registration"}
-      </span>
-      <h1>{mode === "signin" ? "Sign in" : "Sign up"}</h1>
+      <span className="eyebrow dark">Secure access</span>
+      <h1>Sign In</h1>
       <p>
-        {mode === "signin"
-          ? "Sign in with your Google account or coordinator credentials to manage events and official scoring."
-          : "Register with your Google account to get authenticated for Bohol Provincial Meet 2026 coordinator access."}
+        Sign in with your Google account or coordinator credentials to manage events and official scoring.
       </p>
 
       {error && (
@@ -537,73 +420,42 @@ export function LoginPage({
       <button
         type="button"
         className="google-auth-btn"
-        onClick={() => void handleGoogleAuth(mode)}
+        onClick={() => void handleGoogleAuth()}
         disabled={busy}
       >
         <GoogleIcon />
-        <span>
-          {busy
-            ? "Connecting to Google…"
-            : mode === "signin"
-              ? "Sign in with Google"
-              : "Sign up with Google"}
-        </span>
+        <span>{busy ? "Connecting to Google…" : "Sign in with Google"}</span>
       </button>
 
-      {mode === "signup" ? (
-        <>
-          <div className="auth-info-box">
-            <i className="bi bi-info-circle-fill" aria-hidden="true" />
-            <div>
-              <strong>How registration works:</strong>
-              <p>
-                Click <strong>Sign up with Google</strong> to authenticate your DepEd or personal Google account. Once signed up, the Meet Administrator will link your account to your designated sport events.
-              </p>
-            </div>
-          </div>
-          <div className="auth-divider">
-            <span>already registered?</span>
-          </div>
-          <button
-            type="button"
-            className="auth-secondary-btn"
-            onClick={() => {
-              setMode("signin");
-              setError("");
-            }}
-          >
-            Sign in with existing credentials
-          </button>
-        </>
-      ) : (
-        <>
-          <div className="auth-divider">
-            <span>or sign in with credentials</span>
-          </div>
-          <form onSubmit={signIn} className="form-stack">
-            <label>
-              Username or email
-              <input
-                autoComplete="username"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                required
-              />
-            </label>
-            <label>
-              Password
-              <input
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-              />
-            </label>
-            <button disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
-          </form>
-        </>
-      )}
+      <p className="auth-google-note">
+        <i className="bi bi-info-circle-fill" /> New coordinators signing in with Google will be automatically queued for administrator approval in the Coordinator Directory.
+      </p>
+
+      <div className="auth-divider">
+        <span>or sign in with credentials</span>
+      </div>
+      <form onSubmit={signIn} className="form-stack">
+        <label>
+          Username or email
+          <input
+            autoComplete="username"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            required
+          />
+        </label>
+        <label>
+          Password
+          <input
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
+        </label>
+        <button disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
+      </form>
     </section>
   );
 }

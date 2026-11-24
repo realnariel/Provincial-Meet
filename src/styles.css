@@ -1434,6 +1434,17 @@ textarea:focus-visible {
   opacity: 0.65;
   cursor: not-allowed;
 }
+.auth-google-note {
+  font-size: 0.82rem;
+  color: #4b6354;
+  margin: -0.3rem 0 1rem;
+  line-height: 1.45;
+  text-align: center;
+}
+.auth-google-note i {
+  color: var(--cc-primary, #123f2d);
+  margin-right: 0.35rem;
+}
 .auth-divider {
   display: flex;
   align-items: center;

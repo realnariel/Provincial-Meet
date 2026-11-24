@@ -115,8 +115,7 @@ export default function App() {
         const isOAuthReturn =
           window.location.search.includes("code=") ||
           window.location.hash.includes("access_token=") ||
-          window.location.search.includes("flow=") ||
-          Boolean(localStorage.getItem("google_auth_flow"));
+          window.location.pathname === "/login";
 
         if (isOAuthReturn || window.location.pathname === "/login") {
           window.history.replaceState(null, "", "/login");
@@ -133,14 +132,6 @@ export default function App() {
     const email = session.user.email ?? "";
     // Only register real Google users. Never register synthetic username/password accounts!
     if (!email || email.toLowerCase().endsWith("@accounts.provmeet.example.com")) return;
-
-    const flow =
-      new URLSearchParams(window.location.search).get("flow") ||
-      localStorage.getItem("google_auth_flow") ||
-      sessionStorage.getItem("google_auth_flow");
-
-    // If the user clicked "Sign in with Google", do not auto-register as pending sign-up!
-    if (flow === "signin") return;
 
     const client = supabase;
     const rawName =
