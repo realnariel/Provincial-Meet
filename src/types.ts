@@ -50,7 +50,7 @@ export interface Coordinator {
 }
 
 export interface CoordinatorRequest {
-  id: number
+  id: number | string
   auth_user_id: string
   email: string
   fullname: string

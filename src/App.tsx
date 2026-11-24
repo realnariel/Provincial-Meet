@@ -33,6 +33,13 @@ export interface AppData {
 const emptyData: AppData = { teams: [], events: [], awards: [], tallies: [] };
 
 function currentPath() {
+  if (
+    typeof window !== "undefined" &&
+    (window.location.hash.includes("access_token") ||
+      window.location.search.includes("code="))
+  ) {
+    return "/login";
+  }
   return window.location.pathname.replace(/\/$/, "") || "/";
 }
 
@@ -93,14 +100,53 @@ export default function App() {
   useEffect(() => {
     if (!supabase) return;
     const client = supabase;
-    void client.auth
-      .getSession()
-      .then(({ data: result }) => setSession(result.session));
-    const { data: listener } = client.auth.onAuthStateChange((_event, next) =>
-      setSession(next),
-    );
+    void client.auth.getSession().then(({ data: result }) => {
+      setSession(result.session);
+      const hadAuthHash =
+        window.location.hash.includes("access_token") ||
+        window.location.search.includes("code=");
+      if (hadAuthHash) {
+        window.history.replaceState(null, "", "/login");
+        setPath("/login");
+      }
+    });
+    const { data: listener } = client.auth.onAuthStateChange((event, next) => {
+      setSession(next);
+      if (event === "SIGNED_IN" && next?.user) {
+        const hadAuthHash =
+          window.location.hash.includes("access_token") ||
+          window.location.search.includes("code=");
+        if (hadAuthHash || window.location.pathname === "/login") {
+          window.history.replaceState(null, "", "/login");
+          setPath("/login");
+        }
+      }
+    });
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  // Root-level auto-registration for pending coordinator requests
+  useEffect(() => {
+    if (!supabase || !session?.user || profile) return;
+    const client = supabase;
+    const email = session.user.email ?? "";
+    const rawName =
+      (session.user.user_metadata?.full_name as string | undefined) ||
+      (session.user.user_metadata?.name as string | undefined) ||
+      email.split("@")[0] ||
+      "Coordinator";
+    void Promise.resolve(
+      client.from("prov_coordinator_requests").upsert(
+        {
+          auth_user_id: session.user.id,
+          email,
+          fullname: rawName,
+          status: "pending",
+        },
+        { onConflict: "auth_user_id" },
+      ),
+    ).catch(() => {});
+  }, [session, profile]);
 
   const reloadProfile = useCallback(async () => {
     if (!supabase || !session?.user) {
@@ -557,6 +603,32 @@ export default function App() {
         </div>
       )}
       <main className="main-container">
+        {session?.user && !profile && path !== "/login" && (
+          <aside className="pending-top-banner" role="status">
+            <div>
+              <i className="bi bi-hourglass-split" aria-hidden="true" />
+              <span>
+                Account Connected: <strong>{session.user.email}</strong> — Coordinator registration awaiting administrator approval.
+              </span>
+            </div>
+            <div className="pending-top-banner-actions">
+              <button
+                type="button"
+                className="banner-check-btn"
+                onClick={() => navigate("/login")}
+              >
+                View Status
+              </button>
+              <button
+                type="button"
+                className="banner-signout-btn"
+                onClick={() => void signOut()}
+              >
+                Sign out
+              </button>
+            </div>
+          </aside>
+        )}
         {authNotice && (
           <div className="alert success" role="status">
             {authNotice}

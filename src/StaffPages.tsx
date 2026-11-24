@@ -779,18 +779,39 @@ function CoordinatorAdmin({
     setError("");
     setNotice("");
     try {
-      const { error: rpcError } = await requireSupabase().rpc(
-        "prov_approve_coordinator_request",
-        {
-          p_request_id: req.id,
-          p_is_admin: makeAdmin,
-        },
-      );
-      if (rpcError) throw rpcError;
-      await Promise.all([reload(), loadPending()]);
-      setNotice(
-        `Approved ${req.fullname} (${req.email}) as ${makeAdmin ? "Administrator" : "Coordinator"}! They can now sign in with Google.`,
-      );
+      let approved = false;
+
+      // 1. If numeric request ID, attempt database RPC first
+      if (typeof req.id === "number" && req.id > 0) {
+        const { error: rpcError } = await requireSupabase().rpc(
+          "prov_approve_coordinator_request",
+          {
+            p_request_id: req.id,
+            p_is_admin: makeAdmin,
+          },
+        );
+        if (!rpcError) approved = true;
+      }
+
+      // 2. If not approved by RPC (e.g. auth user fallback or missing table), use Edge function
+      if (!approved) {
+        const success = await request(
+          "approve-user",
+          {
+            authUserId: req.auth_user_id,
+            email: req.email,
+            fullname: req.fullname,
+            isAdmin: makeAdmin,
+          },
+          `Approved ${req.fullname} (${req.email}) as ${makeAdmin ? "Administrator" : "Coordinator"}!`,
+        );
+        if (!success) return;
+      } else {
+        await Promise.all([reload(), loadPending()]);
+        setNotice(
+          `Approved ${req.fullname} (${req.email}) as ${makeAdmin ? "Administrator" : "Coordinator"}! They can now sign in with Google.`,
+        );
+      }
     } catch (cause) {
       setError(message(cause));
     } finally {
@@ -805,15 +826,13 @@ function CoordinatorAdmin({
     setError("");
     setNotice("");
     try {
-      const { error: rpcError } = await requireSupabase().rpc(
-        "prov_reject_coordinator_request",
-        {
+      if (typeof req.id === "number" && req.id > 0) {
+        await requireSupabase().rpc("prov_reject_coordinator_request", {
           p_request_id: req.id,
-        },
-      );
-      if (rpcError) throw rpcError;
-      await loadPending();
-      setNotice(`Registration request from ${req.fullname} declined.`);
+        });
+      }
+      setRequests((prev) => prev.filter((r) => r.auth_user_id !== req.auth_user_id));
+      setNotice(`Registration request from ${req.fullname} dismissed.`);
     } catch (cause) {
       setError(message(cause));
     } finally {

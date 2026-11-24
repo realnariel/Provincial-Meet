@@ -75,6 +75,121 @@ edgeRuntime.serve(async (request) => {
 
   if (!profile.is_admin)
     return json({ error: "Administrator access required" }, 403);
+
+  if (body.action === "list-pending") {
+    const { data: coords } = await admin
+      .from("prov_coordinators")
+      .select("auth_user_id");
+    const existingAuthIds = new Set(
+      (coords ?? []).map((c) => c.auth_user_id as string).filter(Boolean),
+    );
+
+    const results: Array<Record<string, unknown>> = [];
+
+    // Query prov_coordinator_requests table if it exists
+    try {
+      const { data: reqs } = await admin
+        .from("prov_coordinator_requests")
+        .select("*")
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
+      if (reqs && reqs.length > 0) {
+        results.push(...reqs);
+      }
+    } catch {
+      // Table may not exist yet
+    }
+
+    const seenAuthIds = new Set(results.map((r) => r.auth_user_id as string));
+
+    // Fallback: check auth.users directly via admin API
+    try {
+      const { data: authUsers } = await admin.auth.admin.listUsers();
+      if (authUsers?.users) {
+        for (const u of authUsers.users) {
+          if (!existingAuthIds.has(u.id) && !seenAuthIds.has(u.id)) {
+            results.push({
+              id: `auth_${u.id}`,
+              auth_user_id: u.id,
+              email: u.email ?? "",
+              fullname:
+                (u.user_metadata?.full_name as string) ||
+                (u.user_metadata?.name as string) ||
+                u.email?.split("@")[0] ||
+                "Google User",
+              status: "pending",
+              created_at: u.created_at,
+            });
+            seenAuthIds.add(u.id);
+          }
+        }
+      }
+    } catch {
+      // Ignore
+    }
+
+    return json({ requests: results });
+  }
+
+  if (body.action === "approve-user") {
+    const authUserId =
+      typeof body.authUserId === "string" ? body.authUserId.trim() : null;
+    const email = typeof body.email === "string" ? body.email.trim() : "";
+    const fullname =
+      typeof body.fullname === "string" ? body.fullname.trim() : "";
+    const isAdmin = body.isAdmin === true;
+
+    if (!authUserId) return json({ error: "Auth user ID required" }, 400);
+
+    const { data: existing } = await admin
+      .from("prov_coordinators")
+      .select("id")
+      .eq("auth_user_id", authUserId)
+      .maybeSingle();
+    if (existing) {
+      return json({ ok: true, message: "User is already a coordinator" });
+    }
+
+    let baseUsername = (email.split("@")[0] || "coord")
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]/g, "");
+    if (baseUsername.length < 3) baseUsername = "coord_" + baseUsername;
+    let username = baseUsername;
+    let counter = 1;
+
+    while (true) {
+      const { data: taken } = await admin
+        .from("prov_coordinators")
+        .select("id")
+        .eq("username", username)
+        .maybeSingle();
+      if (!taken) break;
+      counter++;
+      username = `${baseUsername}${counter}`;
+    }
+
+    const { error: insertErr } = await admin.from("prov_coordinators").insert({
+      username,
+      fullname: fullname || email.split("@")[0] || "Coordinator",
+      email: email || null,
+      is_admin: isAdmin,
+      auth_user_id: authUserId,
+      passwordhash: "",
+      must_change_password: false,
+    });
+    if (insertErr) return json({ error: insertErr.message }, 400);
+
+    try {
+      await admin
+        .from("prov_coordinator_requests")
+        .update({ status: "approved", reviewed_at: new Date().toISOString() })
+        .eq("auth_user_id", authUserId);
+    } catch {
+      // Table may not exist yet
+    }
+
+    return json({ ok: true });
+  }
   if (body.action === "create") {
     const username =
       typeof body.username === "string"

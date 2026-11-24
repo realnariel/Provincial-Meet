@@ -59,17 +59,39 @@ export async function loadCoordinators(): Promise<Coordinator[]> {
 
 export async function loadCoordinatorRequests(): Promise<CoordinatorRequest[]> {
   if (!supabase) return [];
+  const results: CoordinatorRequest[] = [];
   try {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("prov_coordinator_requests")
       .select("id,auth_user_id,email,fullname,status,created_at,reviewed_at,reviewed_by")
       .eq("status", "pending")
       .order("created_at", { ascending: false });
-    if (error) return [];
-    return data ?? [];
+    if (data && data.length > 0) {
+      results.push(...data);
+    }
   } catch {
-    return [];
+    // Ignore error if table not yet created
   }
+
+  // Also query edge function fallback so that any user in Supabase Auth is discovered
+  try {
+    const { data: edgeData } = await supabase.functions.invoke("coordinator-admin", {
+      body: { action: "list-pending" },
+    });
+    if (edgeData?.requests && Array.isArray(edgeData.requests)) {
+      const seen = new Set(results.map((r) => r.auth_user_id));
+      for (const req of edgeData.requests as CoordinatorRequest[]) {
+        if (!seen.has(req.auth_user_id)) {
+          seen.add(req.auth_user_id);
+          results.push(req);
+        }
+      }
+    }
+  } catch {
+    // Ignore if edge function is unavailable
+  }
+
+  return results;
 }
 
 export async function loadQualifiers(): Promise<Qualifier[]> {

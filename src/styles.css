@@ -1542,6 +1542,73 @@ textarea:focus-visible {
 .link-btn:hover {
   color: var(--brand-gold);
 }
+/* Pending Google Registration Top Alert Banner */
+.pending-top-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-left: 5px solid #d97706;
+  border-radius: 9px;
+  padding: 0.75rem 1.15rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 2px 8px rgba(180, 83, 9, 0.08);
+}
+.pending-top-banner > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.9rem;
+  color: #78350f;
+}
+.pending-top-banner > div:first-child i {
+  font-size: 1.1rem;
+  color: #d97706;
+  flex-shrink: 0;
+}
+.pending-top-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.banner-check-btn {
+  background: #d97706;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.banner-check-btn:hover {
+  background: #b45309;
+}
+.banner-signout-btn {
+  background: transparent;
+  color: #78350f;
+  border: 1px solid #d97706;
+  border-radius: 6px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+@media (max-width: 760px) {
+  .pending-top-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  .pending-top-banner-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
 /* Pending Google Registration Confirmation Card */
 .pending-auth-card {
   max-width: 480px;
