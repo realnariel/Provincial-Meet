@@ -432,19 +432,6 @@ export function LoginPage({
             </label>
             <button disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
           </form>
-          <div className="auth-switch-prompt">
-            Need an account?{" "}
-            <button
-              type="button"
-              className="link-btn"
-              onClick={() => {
-                setMode("signup");
-                setError("");
-              }}
-            >
-              Sign up with Google
-            </button>
-          </div>
         </>
       )}
     </section>
