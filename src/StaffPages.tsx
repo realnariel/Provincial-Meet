@@ -722,6 +722,7 @@ function CoordinatorAdmin({
   const [notice, setNotice] = useState("");
   const [editing, setEditing] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
+  const [editUsername, setEditUsername] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editAdmin, setEditAdmin] = useState(false);
   const [resetPassword, setResetPassword] = useState("");
@@ -829,7 +830,6 @@ function CoordinatorAdmin({
     );
     if (success) {
       if (email.trim() && supabase) {
-        // Also update email directly if prov_coordinators has email column
         void supabase
           .from("prov_coordinators")
           .update({ email: email.trim() })
@@ -845,9 +845,77 @@ function CoordinatorAdmin({
     }
   }
 
+  async function saveCoordinatorEdit(item: Coordinator) {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      // 1. Try database RPC first (atomic and validates unique usernames)
+      const { error: rpcError } = await requireSupabase().rpc(
+        "prov_admin_update_coordinator",
+        {
+          p_id: item.id,
+          p_fullname: editName.trim(),
+          p_username: editUsername.trim().toLowerCase(),
+          p_email: editEmail.trim() || null,
+          p_is_admin: editAdmin,
+        },
+      );
+
+      if (rpcError) {
+        // Fallback to Edge function if RPC not yet run
+        const edgeSuccess = await request(
+          "update",
+          {
+            id: item.id,
+            fullname: editName.trim(),
+            username: editUsername.trim().toLowerCase(),
+            email: editEmail.trim() || undefined,
+            isAdmin: editAdmin,
+          },
+          "Coordinator details updated.",
+        );
+        if (!edgeSuccess) return;
+      } else {
+        await reload();
+        setNotice(`Details for ${editName.trim()} updated successfully.`);
+      }
+      setEditing(null);
+    } catch (cause) {
+      setError(message(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteCoordinator(item: Coordinator) {
+    if (!window.confirm(`Delete coordinator account @${item.username} (${item.fullname})?`))
+      return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const success = await request("delete", { id: item.id }, `Coordinator account @${item.username} deleted.`);
+      if (!success) {
+        const { error: rpcError } = await requireSupabase().rpc(
+          "prov_admin_delete_coordinator",
+          { p_id: item.id },
+        );
+        if (rpcError) throw rpcError;
+        await reload();
+        setNotice(`Coordinator @${item.username} removed from directory.`);
+      }
+    } catch (cause) {
+      setError(message(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function beginEdit(item: Coordinator) {
     setEditing(item.id);
     setEditName(item.fullname);
+    setEditUsername(item.username);
     setEditEmail(item.email || "");
     setEditAdmin(item.is_admin);
     setResetPassword("");
@@ -1071,10 +1139,7 @@ function CoordinatorAdmin({
                       type="button"
                       className="staff-icon-button delete"
                       disabled={busy}
-                      onClick={() => {
-                        if (window.confirm(`Delete coordinator ${item.username}?`))
-                          void request("delete", { id: item.id }, "Coordinator account deleted.");
-                      }}
+                      onClick={() => void deleteCoordinator(item)}
                       aria-label={`Delete ${item.fullname}`}
                     >
                       <i className="bi bi-trash3" />
@@ -1110,61 +1175,61 @@ function CoordinatorAdmin({
                 <div className="form-two">
                   <label>
                     Username
-                    <input value={item.username} disabled />
+                    <input
+                      value={editUsername}
+                      onChange={(event) =>
+                        setEditUsername(
+                          event.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""),
+                        )
+                      }
+                      pattern="[a-zA-Z0-9._-]+"
+                      placeholder="e.g. maria_santos"
+                      required
+                    />
                   </label>
                   <label>
                     Full Name
                     <input
                       value={editName}
                       onChange={(event) => setEditName(event.target.value)}
+                      placeholder="e.g. Maria Santos"
                       required
                     />
                   </label>
                 </div>
-                <label>
-                  Email Address
-                  <input
-                    type="email"
-                    value={editEmail}
-                    onChange={(event) => setEditEmail(event.target.value)}
-                    placeholder="e.g. coordinator@deped.gov.ph"
-                  />
-                </label>
-                <label className="checkbox">
-                  <input
-                    type="checkbox"
-                    checked={editAdmin}
-                    onChange={(event) => setEditAdmin(event.target.checked)}
-                  />{" "}
-                  Administrator access
-                </label>
+                <div className="form-two">
+                  <label>
+                    Email Address
+                    <input
+                      type="email"
+                      value={editEmail}
+                      onChange={(event) => setEditEmail(event.target.value)}
+                      placeholder="e.g. maria.santos@deped.gov.ph"
+                    />
+                  </label>
+                  <label className="checkbox" style={{ marginTop: "1.85rem" }}>
+                    <input
+                      type="checkbox"
+                      checked={editAdmin}
+                      onChange={(event) => setEditAdmin(event.target.checked)}
+                    />{" "}
+                    Administrator access
+                  </label>
+                </div>
                 <div className="button-row">
                   <button
                     type="button"
-                    disabled={busy || !editName.trim()}
-                    onClick={async () => {
-                      const success = await request(
-                        "update",
-                        { id: item.id, fullname: editName, isAdmin: editAdmin },
-                        "Coordinator details updated.",
-                      );
-                      if (success) {
-                        if (supabase) {
-                          void supabase
-                            .from("prov_coordinators")
-                            .update({ email: editEmail.trim() || null })
-                            .eq("id", item.id)
-                            .then(() => void reload());
-                        }
-                        setEditing(null);
-                      }
-                    }}
+                    disabled={busy || !editName.trim() || !editUsername.trim()}
+                    onClick={() => void saveCoordinatorEdit(item)}
                   >
                     {busy ? "Saving…" : "Save Details"}
                   </button>
                 </div>
                 <div className="staff-password-reset">
-                  <h3>Reset Password</h3>
+                  <h3>Set / Reset Account Password</h3>
+                  <p style={{ margin: "0 0 0.5rem", fontSize: "0.82rem", color: "var(--muted)" }}>
+                    Allows this coordinator (including Google accounts) to also sign in using username and password.
+                  </p>
                   <label>
                     New Temporary Password
                     <input
@@ -1173,6 +1238,7 @@ function CoordinatorAdmin({
                       minLength={6}
                       value={resetPassword}
                       onChange={(event) => setResetPassword(event.target.value)}
+                      placeholder="Minimum 6 characters"
                     />
                   </label>
                   <button
@@ -1183,12 +1249,12 @@ function CoordinatorAdmin({
                       const success = await request(
                         "reset-password",
                         { id: item.id, password: resetPassword },
-                        "Password reset successfully.",
+                        "Password updated successfully.",
                       );
                       if (success) setResetPassword("");
                     }}
                   >
-                    Reset Password
+                    Update Password
                   </button>
                 </div>
               </div>

@@ -165,4 +165,98 @@ revoke all on function public.prov_reject_coordinator_request(integer) from publ
 grant execute on function public.prov_approve_coordinator_request(integer, boolean) to authenticated;
 grant execute on function public.prov_reject_coordinator_request(integer) to authenticated;
 
+-- 7. Stored function for administrator to update coordinator details directly (Full Name, Username, Email, Admin Access)
+create or replace function public.prov_admin_update_coordinator(
+  p_id integer,
+  p_fullname text,
+  p_username text,
+  p_email text,
+  p_is_admin boolean
+)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare
+  v_caller_id integer;
+  v_cleaned_username text;
+begin
+  if not private.prov_is_admin() then
+    raise exception 'Only an administrator may update coordinators';
+  end if;
+
+  select id into v_caller_id from public.prov_coordinators where auth_user_id = (select auth.uid());
+  if v_caller_id = p_id and p_is_admin is distinct from true then
+    raise exception 'You cannot remove your own administrator access';
+  end if;
+
+  v_cleaned_username := lower(btrim(p_username));
+  if not (v_cleaned_username ~ '^[a-z0-9._-]+$') then
+    raise exception 'Username must contain only lowercase letters, numbers, dots, underscores, or hyphens';
+  end if;
+
+  if exists (select 1 from public.prov_coordinators where lower(username) = v_cleaned_username and id <> p_id) then
+    raise exception 'Username "%" is already taken by another coordinator', v_cleaned_username;
+  end if;
+
+  update public.prov_coordinators
+  set fullname = btrim(p_fullname),
+      username = v_cleaned_username,
+      email = nullif(btrim(p_email), ''),
+      is_admin = coalesce(p_is_admin, false)
+  where id = p_id;
+
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+-- 8. Stored function for administrator to delete a coordinator account
+create or replace function public.prov_admin_delete_coordinator(
+  p_id integer
+)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare
+  v_caller_id integer;
+  v_auth_user_id uuid;
+begin
+  if not private.prov_is_admin() then
+    raise exception 'Only an administrator may delete coordinators';
+  end if;
+
+  select id into v_caller_id from public.prov_coordinators where auth_user_id = (select auth.uid());
+  if v_caller_id = p_id then
+    raise exception 'You cannot delete your own account';
+  end if;
+
+  select auth_user_id into v_auth_user_id from public.prov_coordinators where id = p_id;
+
+  -- Delete coordinator profile (events with this coordinator set coordinatorid to null automatically)
+  delete from public.prov_coordinators where id = p_id;
+
+  -- Clean up associated request record if one exists
+  if v_auth_user_id is not null then
+    delete from public.prov_coordinator_requests where auth_user_id = v_auth_user_id;
+  end if;
+
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+revoke all on function public.prov_admin_update_coordinator(integer, text, text, text, boolean) from public;
+revoke all on function public.prov_admin_delete_coordinator(integer) from public;
+grant execute on function public.prov_admin_update_coordinator(integer, text, text, text, boolean) to authenticated;
+grant execute on function public.prov_admin_delete_coordinator(integer) to authenticated;
+
+-- 9. Direct table policies for administrators
+drop policy if exists prov_coordinators_admin_update on public.prov_coordinators;
+create policy prov_coordinators_admin_update on public.prov_coordinators
+  for update to authenticated
+  using ((select private.prov_is_admin()))
+  with check ((select private.prov_is_admin()));
+
+drop policy if exists prov_coordinators_admin_delete on public.prov_coordinators;
+create policy prov_coordinators_admin_delete on public.prov_coordinators
+  for delete to authenticated
+  using ((select private.prov_is_admin()));
+
+grant update (fullname, username, email, is_admin) on public.prov_coordinators to authenticated;
+grant delete on public.prov_coordinators to authenticated;
+
 commit;

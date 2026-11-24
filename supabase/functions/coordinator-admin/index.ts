@@ -106,9 +106,14 @@ edgeRuntime.serve(async (request) => {
         { error: authError?.message ?? "Could not create account" },
         400,
       );
+    const email =
+      typeof body.email === "string" && body.email.trim()
+        ? body.email.trim()
+        : null;
     const { error: rowError } = await admin.from("prov_coordinators").insert({
       username,
       fullname,
+      email,
       is_admin: body.isAdmin === true,
       auth_user_id: created.user.id,
       passwordhash: "",
@@ -152,9 +157,26 @@ edgeRuntime.serve(async (request) => {
       return json({ error: "Enter a valid full name" }, 400);
     if (id === profile.id && body.isAdmin !== true)
       return json({ error: "You cannot remove your own admin access" }, 400);
+
+    const updatePayload: Record<string, unknown> = {
+      fullname,
+      is_admin: body.isAdmin === true,
+    };
+
+    if (typeof body.username === "string" && body.username.trim()) {
+      const cleaned = body.username.trim().toLowerCase();
+      if (!/^[a-z0-9._-]{1,50}$/.test(cleaned))
+        return json({ error: "Invalid username format" }, 400);
+      updatePayload.username = cleaned;
+    }
+
+    if (typeof body.email === "string") {
+      updatePayload.email = body.email.trim() || null;
+    }
+
     const { error: updateError } = await admin
       .from("prov_coordinators")
-      .update({ fullname, is_admin: body.isAdmin === true })
+      .update(updatePayload)
       .eq("id", id);
     if (updateError) return json({ error: updateError.message }, 400);
     return json({ ok: true });
