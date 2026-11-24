@@ -60,6 +60,26 @@ export async function loadCoordinators(): Promise<Coordinator[]> {
 export async function loadCoordinatorRequests(): Promise<CoordinatorRequest[]> {
   if (!supabase) return [];
   const results: CoordinatorRequest[] = [];
+
+  // Query existing coordinators so we never display already-approved coordinators in the pending queue
+  let existingAuthIds = new Set<string>();
+  let existingEmails = new Set<string>();
+  try {
+    const { data: coords } = await supabase
+      .from("prov_coordinators")
+      .select("auth_user_id, email");
+    if (coords) {
+      existingAuthIds = new Set(coords.map((c) => c.auth_user_id).filter(Boolean));
+      existingEmails = new Set(
+        coords
+          .map((c) => (c.email || "").toLowerCase().trim())
+          .filter(Boolean),
+      );
+    }
+  } catch {
+    // Ignore error
+  }
+
   try {
     // Purge any synthetic username-credential accounts accidentally queued
     void supabase
@@ -104,7 +124,9 @@ export async function loadCoordinatorRequests(): Promise<CoordinatorRequest[]> {
   return results.filter(
     (r) =>
       r.email &&
-      !r.email.toLowerCase().endsWith("@accounts.provmeet.example.com"),
+      !r.email.toLowerCase().endsWith("@accounts.provmeet.example.com") &&
+      !existingAuthIds.has(r.auth_user_id) &&
+      !existingEmails.has(r.email.toLowerCase().trim()),
   );
 }
 

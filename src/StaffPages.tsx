@@ -1013,17 +1013,33 @@ function CoordinatorAdmin({
             .replace(/[^a-z0-9._-]/g, "");
           if (baseUsername.length < 3) baseUsername = "coord_" + baseUsername;
 
-          // Check if already in prov_coordinators
-          const { data: existingCoord } = await supabase
+          // Check if already in prov_coordinators by auth_user_id or by email
+          let existingCoord: { id: number; is_admin: boolean } | null = null;
+          const { data: byAuth } = await supabase
             .from("prov_coordinators")
-            .select("id")
+            .select("id,is_admin")
             .eq("auth_user_id", req.auth_user_id)
             .maybeSingle();
+          existingCoord = byAuth;
+
+          if (!existingCoord && email) {
+            const { data: byEmail } = await supabase
+              .from("prov_coordinators")
+              .select("id,is_admin")
+              .ilike("email", email)
+              .maybeSingle();
+            if (byEmail) existingCoord = byEmail;
+          }
 
           if (existingCoord) {
             const { error: updErr } = await supabase
               .from("prov_coordinators")
-              .update({ is_admin: makeAdmin, email, fullname: req.fullname })
+              .update({
+                auth_user_id: req.auth_user_id,
+                is_admin: makeAdmin || existingCoord.is_admin,
+                email,
+                fullname: req.fullname,
+              })
               .eq("id", existingCoord.id);
             if (!updErr) {
               approved = true;
@@ -1188,19 +1204,32 @@ function CoordinatorAdmin({
     setError("");
     setNotice("");
     try {
-      if (typeof req.id === "number" && req.id > 0) {
-        await requireSupabase().rpc("prov_reject_coordinator_request", {
-          p_request_id: req.id,
-        });
+      // 1. Try edge function first (deletes from auth.users permanently using service role)
+      const edgeSuccess = await request(
+        "reject-user",
+        {
+          authUserId: req.auth_user_id,
+          requestId: typeof req.id === "number" ? req.id : null,
+        },
+        `Registration request for ${req.fullname} (${req.email}) removed.`,
+      );
+
+      if (!edgeSuccess) {
+        // Fallback to database RPC and direct table delete
+        if (typeof req.id === "number" && req.id > 0) {
+          await requireSupabase().rpc("prov_reject_coordinator_request", {
+            p_request_id: req.id,
+          });
+        }
+        if (supabase) {
+          await supabase
+            .from("prov_coordinator_requests")
+            .delete()
+            .eq("auth_user_id", req.auth_user_id);
+        }
+        await loadPending();
+        setNotice(`Registration request for ${req.fullname} (${req.email}) removed.`);
       }
-      if (supabase) {
-        await supabase
-          .from("prov_coordinator_requests")
-          .delete()
-          .eq("auth_user_id", req.auth_user_id);
-      }
-      setRequests((prev) => prev.filter((r) => r.auth_user_id !== req.auth_user_id));
-      setNotice(`Registration request for ${req.fullname} (${req.email}) removed.`);
     } catch (cause) {
       setError(message(cause));
     } finally {

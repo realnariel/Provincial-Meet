@@ -79,9 +79,14 @@ edgeRuntime.serve(async (request) => {
   if (body.action === "list-pending") {
     const { data: coords } = await admin
       .from("prov_coordinators")
-      .select("auth_user_id");
+      .select("auth_user_id, email");
     const existingAuthIds = new Set(
       (coords ?? []).map((c) => c.auth_user_id as string).filter(Boolean),
+    );
+    const existingEmails = new Set(
+      (coords ?? [])
+        .map((c) => ((c.email as string) || "").toLowerCase().trim())
+        .filter(Boolean),
     );
 
     const results: Array<Record<string, unknown>> = [];
@@ -95,7 +100,16 @@ edgeRuntime.serve(async (request) => {
         .not("email", "like", "%@accounts.provmeet.example.com")
         .order("created_at", { ascending: false });
       if (reqs && reqs.length > 0) {
-        results.push(...reqs);
+        for (const r of reqs) {
+          const reqEmail = ((r.email as string) || "").toLowerCase().trim();
+          // Filter out requests for accounts that are already coordinators
+          if (
+            !existingAuthIds.has(r.auth_user_id as string) &&
+            !existingEmails.has(reqEmail)
+          ) {
+            results.push(r);
+          }
+        }
       }
     } catch {
       // Table may not exist yet
@@ -108,9 +122,23 @@ edgeRuntime.serve(async (request) => {
       const { data: authUsers } = await admin.auth.admin.listUsers();
       if (authUsers?.users) {
         for (const u of authUsers.users) {
-          const email = (u.email ?? "").toLowerCase();
+          const email = (u.email ?? "").toLowerCase().trim();
           // Never list internal username/password credential accounts as pending Google signups
           if (!email || email.endsWith("@accounts.provmeet.example.com")) continue;
+
+          // If this email already belongs to an existing coordinator, auto-link auth_user_id and DO NOT list as pending!
+          if (existingEmails.has(email)) {
+            try {
+              await admin
+                .from("prov_coordinators")
+                .update({ auth_user_id: u.id })
+                .ilike("email", email)
+                .is("auth_user_id", null);
+            } catch {
+              // Ignore
+            }
+            continue;
+          }
 
           if (!existingAuthIds.has(u.id) && !seenAuthIds.has(u.id)) {
             results.push({
@@ -136,10 +164,50 @@ edgeRuntime.serve(async (request) => {
     return json({ requests: results });
   }
 
+  if (body.action === "reject-user") {
+    const authUserId =
+      typeof body.authUserId === "string" ? body.authUserId.trim() : null;
+    const requestId = typeof body.requestId === "number" ? body.requestId : null;
+
+    if (!authUserId && !requestId)
+      return json({ error: "authUserId or requestId required" }, 400);
+
+    if (requestId) {
+      try {
+        await admin
+          .from("prov_coordinator_requests")
+          .update({ status: "rejected", reviewed_at: new Date().toISOString() })
+          .eq("id", requestId);
+      } catch {
+        // Ignore
+      }
+    }
+
+    if (authUserId) {
+      try {
+        await admin
+          .from("prov_coordinator_requests")
+          .delete()
+          .eq("auth_user_id", authUserId);
+      } catch {
+        // Ignore
+      }
+
+      // Permanently delete user from Supabase Auth so they never return on refresh!
+      try {
+        await admin.auth.admin.deleteUser(authUserId);
+      } catch (authDelErr) {
+        console.warn("Could not delete from auth.users:", authDelErr);
+      }
+    }
+
+    return json({ ok: true, message: "Pending sign-up rejected and removed" });
+  }
+
   if (body.action === "approve-user") {
     const authUserId =
       typeof body.authUserId === "string" ? body.authUserId.trim() : null;
-    const email = typeof body.email === "string" ? body.email.trim() : "";
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     const fullname =
       typeof body.fullname === "string" ? body.fullname.trim() : "";
     const isAdmin = body.isAdmin === true;
@@ -152,7 +220,38 @@ edgeRuntime.serve(async (request) => {
       .eq("auth_user_id", authUserId)
       .maybeSingle();
     if (existing) {
-      return json({ ok: true, message: "User is already a coordinator" });
+      return json({ ok: true, message: "User is already a coordinator", coordinator_id: existing.id });
+    }
+
+    // Check if coordinator already exists with this email! Link them!
+    if (email) {
+      const { data: existingEmail } = await admin
+        .from("prov_coordinators")
+        .select("id,username,is_admin")
+        .ilike("email", email)
+        .maybeSingle();
+      if (existingEmail) {
+        await admin
+          .from("prov_coordinators")
+          .update({
+            auth_user_id: authUserId,
+            is_admin: isAdmin || existingEmail.is_admin,
+          })
+          .eq("id", existingEmail.id);
+        try {
+          await admin
+            .from("prov_coordinator_requests")
+            .update({ status: "approved", reviewed_at: new Date().toISOString() })
+            .eq("auth_user_id", authUserId);
+        } catch {
+          // Table may not exist yet
+        }
+        return json({
+          ok: true,
+          message: "Linked Google account to existing coordinator profile",
+          coordinator_id: existingEmail.id,
+        });
+      }
     }
 
     let baseUsername = (email.split("@")[0] || "coord")
@@ -173,15 +272,19 @@ edgeRuntime.serve(async (request) => {
       username = `${baseUsername}${counter}`;
     }
 
-    const { error: insertErr } = await admin.from("prov_coordinators").insert({
-      username,
-      fullname: fullname || email.split("@")[0] || "Coordinator",
-      email: email || null,
-      is_admin: isAdmin,
-      auth_user_id: authUserId,
-      passwordhash: "",
-      must_change_password: false,
-    });
+    const { data: newCoord, error: insertErr } = await admin
+      .from("prov_coordinators")
+      .insert({
+        username,
+        fullname: fullname || email.split("@")[0] || "Coordinator",
+        email: email || null,
+        is_admin: isAdmin,
+        auth_user_id: authUserId,
+        passwordhash: "",
+        must_change_password: false,
+      })
+      .select("id")
+      .maybeSingle();
     if (insertErr) return json({ error: insertErr.message }, 400);
 
     try {
@@ -193,7 +296,7 @@ edgeRuntime.serve(async (request) => {
       // Table may not exist yet
     }
 
-    return json({ ok: true });
+    return json({ ok: true, coordinator_id: newCoord?.id });
   }
   if (body.action === "create") {
     const username =

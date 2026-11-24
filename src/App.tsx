@@ -151,6 +151,14 @@ export default function App() {
 
     void (async () => {
       try {
+        // If this email is already an approved coordinator, don't create a pending request!
+        const { data: existingCoord } = await client
+          .from("prov_coordinators")
+          .select("id")
+          .ilike("email", email.trim().toLowerCase())
+          .maybeSingle();
+        if (existingCoord) return;
+
         const { data: existing } = await client
           .from("prov_coordinator_requests")
           .select("id")
@@ -177,7 +185,7 @@ export default function App() {
       return;
     }
     const client = supabase;
-    const { data: row, error: lookupError } = await client
+    let { data: row, error: lookupError } = await client
       .from("prov_coordinators")
       .select("id,username,fullname,email,is_admin,auth_user_id,must_change_password")
       .eq("auth_user_id", session.user.id)
@@ -188,10 +196,39 @@ export default function App() {
         .select("id,username,fullname,is_admin,auth_user_id,must_change_password")
         .eq("auth_user_id", session.user.id)
         .maybeSingle();
-      if (fallbackError) setError(fallbackError.message);
-      setProfile(fallbackRow as Coordinator | null);
-      return;
+      if (!fallbackError && fallbackRow) {
+        row = fallbackRow as typeof row;
+      }
     }
+
+    // If not found by auth_user_id, match by email to link Google sign-in to existing coordinator profile!
+    if (!row && session.user.email) {
+      const email = session.user.email.trim().toLowerCase();
+      if (!email.endsWith("@accounts.provmeet.example.com")) {
+        const { data: emailRow } = await client
+          .from("prov_coordinators")
+          .select("id,username,fullname,email,is_admin,auth_user_id,must_change_password")
+          .ilike("email", email)
+          .maybeSingle();
+        if (emailRow) {
+          row = emailRow;
+          // Auto-link this Google auth user to the existing coordinator record
+          try {
+            await client
+              .from("prov_coordinators")
+              .update({ auth_user_id: session.user.id })
+              .eq("id", emailRow.id);
+            await client
+              .from("prov_coordinator_requests")
+              .delete()
+              .eq("auth_user_id", session.user.id);
+          } catch (linkErr) {
+            console.warn("Could not auto-link auth_user_id:", linkErr);
+          }
+        }
+      }
+    }
+
     setProfile(row as Coordinator | null);
   }, [session]);
 

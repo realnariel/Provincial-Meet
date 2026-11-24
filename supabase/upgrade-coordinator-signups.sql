@@ -81,7 +81,7 @@ begin
     raise exception 'Pending request not found';
   end if;
 
-  -- Check if already a coordinator
+  -- Check if already a coordinator by auth_user_id
   if exists (select 1 from public.prov_coordinators where auth_user_id = v_req.auth_user_id) then
     update public.prov_coordinator_requests
     set status = 'approved',
@@ -89,6 +89,27 @@ begin
         reviewed_by = (select fullname from public.prov_coordinators where auth_user_id = (select auth.uid()))
     where id = p_request_id;
     return jsonb_build_object('ok', true, 'message', 'User is already an approved coordinator');
+  end if;
+
+  -- Check if a coordinator with this email already exists: Link them instead of inserting duplicate!
+  select id into v_coord_id from public.prov_coordinators where lower(email) = lower(v_req.email);
+  if v_coord_id is not null then
+    update public.prov_coordinators
+    set auth_user_id = v_req.auth_user_id,
+        is_admin = (is_admin or coalesce(p_is_admin, false))
+    where id = v_coord_id;
+
+    update public.prov_coordinator_requests
+    set status = 'approved',
+        reviewed_at = now(),
+        reviewed_by = (select fullname from public.prov_coordinators where auth_user_id = (select auth.uid()))
+    where id = p_request_id;
+
+    return jsonb_build_object(
+      'ok', true,
+      'coordinator_id', v_coord_id,
+      'message', 'Linked Google account to existing coordinator profile'
+    );
   end if;
 
   -- Derive clean username from email
@@ -142,7 +163,8 @@ $$;
 
 -- 6. Stored function to reject a coordinator request
 create or replace function public.prov_reject_coordinator_request(
-  p_request_id integer
+  p_request_id integer default null,
+  p_auth_user_id text default null
 )
 returns jsonb language plpgsql security definer set search_path = '' as $$
 begin
@@ -154,16 +176,21 @@ begin
   set status = 'rejected',
       reviewed_at = now(),
       reviewed_by = (select fullname from public.prov_coordinators where auth_user_id = (select auth.uid()))
-  where id = p_request_id;
+  where (p_request_id is not null and id = p_request_id)
+     or (p_auth_user_id is not null and auth_user_id = p_auth_user_id);
+
+  delete from public.prov_coordinator_requests
+  where (p_request_id is not null and id = p_request_id)
+     or (p_auth_user_id is not null and auth_user_id = p_auth_user_id);
 
   return jsonb_build_object('ok', true);
 end;
 $$;
 
 revoke all on function public.prov_approve_coordinator_request(integer, boolean) from public;
-revoke all on function public.prov_reject_coordinator_request(integer) from public;
+revoke all on function public.prov_reject_coordinator_request(integer, text) from public;
 grant execute on function public.prov_approve_coordinator_request(integer, boolean) to authenticated;
-grant execute on function public.prov_reject_coordinator_request(integer) to authenticated;
+grant execute on function public.prov_reject_coordinator_request(integer, text) to authenticated;
 
 -- 7. Stored function for administrator to update coordinator details directly (Full Name, Username, Email, Admin Access)
 create or replace function public.prov_admin_update_coordinator(
